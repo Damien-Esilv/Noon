@@ -31,7 +31,7 @@ Noon features a smart duration logic to avoid flickering when switching briefly 
 
 ## 📸 Visual Walkthrough
 
-<details>
+<details open>
 <summary><b>Click to expand screenshots</b></summary>
 
 | | | |
