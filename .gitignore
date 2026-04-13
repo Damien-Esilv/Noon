@@ -1,0 +1,60 @@
+# Xcode
+#
+# Reference: https://github.com/github/gitignore/blob/main/Swift.gitignore
+
+## Global macOS files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## User settings
+*.xcuserdatad/
+xcuserdata/
+
+## Build results
+DerivedData/
+build/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## SwiftPM
+# These are local Swift Package Manager files
+.swiftpm/xcode/package.xcworkspace
+.build/
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+## Continuity Camera
+*.pauser
+
+## App Store Connect
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+## Dependency Managers
+# CocoaPods
+# Pods/
+# Podfile.lock
+# *.xcworkspace
+
+# Carthage
+# Carthage/Build/
+
+# Accio
+# .accio/
+
+## Secrets & Sensitive information
+.env
+.env.*
+*.key
+*.pem
+*.cert
+certificates/
+secrets/
+config.local.json
