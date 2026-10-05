@@ -1,0 +1,40 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    name: Build & Test Noon Extra extra
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Show Xcode Version
+        run: |
+          xcodebuild -version
+
+      - name: Run Unit Tests
+        run: |
+          xcodebuild test \
+            -project Noon.xcodeproj \
+            -scheme Noon \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Build Release
+        run: |
+          xcodebuild build \
+            -project Noon.xcodeproj \
+            -scheme Noon \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
