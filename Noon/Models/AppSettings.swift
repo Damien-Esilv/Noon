@@ -107,7 +107,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
     
     var displayName: String {
         switch self {
-        case .system: return "Langue du système"
+        case .system: return "System Language"
         case .french: return "Français"
         case .english: return "English"
         case .italian: return "Italiano"
