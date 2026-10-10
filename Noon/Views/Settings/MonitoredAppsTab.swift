@@ -146,77 +146,32 @@ struct MonitoredAppsTab: View {
         ScrollView {
             LazyVStack(spacing: 4) {
                 ForEach(filteredWebsites) { site in
-                    websiteRow(site: site)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(selectedWebsite?.id == site.id ? Color.accentColor.opacity(0.1) : .clear)
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
+                    WebsiteRowView(
+                        site: site,
+                        isSelected: selectedWebsite?.id == site.id,
+                        effectiveAccentColor: settings.effectiveAccentColor,
+                        onToggle: {
+                            withAnimation(.spring(response: 0.3)) {
+                                settings.toggleWebsite(id: site.id)
+                            }
+                        },
+                        onDelete: {
+                            withAnimation(.spring(response: 0.3)) {
+                                settings.removeWebsite(id: site.id)
+                                if selectedWebsite?.id == site.id {
+                                    selectedWebsite = nil
+                                }
+                            }
+                        },
+                        onSelect: {
                             selectedWebsite = site
                         }
+                    )
                 }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
         }
-    }
-    
-    private func websiteRow(site: MonitoredWebsite) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill((settings.effectiveAccentColor ?? .accentColor).opacity(site.isEnabled ? 0.15 : 0.05))
-                    .frame(width: 28, height: 28)
-                
-                Image(systemName: "globe")
-                    .font(.system(size: 14))
-                    .foregroundStyle(site.isEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(site.name)
-                    .font(.system(.body, design: .rounded, weight: .medium))
-                
-                Text(site.domain)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            
-            Spacer()
-            
-            Toggle("", isOn: Binding(
-                get: { site.isEnabled },
-                set: { _ in
-                    withAnimation(.spring(response: 0.3)) {
-                        settings.toggleWebsite(id: site.id)
-                    }
-                }
-            ))
-            .labelsHidden()
-            
-            Button {
-                withAnimation(.spring(response: 0.3)) {
-                    settings.removeWebsite(id: site.id)
-                    if selectedWebsite?.id == site.id {
-                        selectedWebsite = nil
-                    }
-                }
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.red.opacity(0.8))
-            }
-            .buttonStyle(.plain)
-            .help("Supprimer")
-            .padding(.leading, 6)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.primary.opacity(0.04))
-        )
     }
     
     private var websitesToolbarSection: some View {
@@ -256,7 +211,7 @@ struct MonitoredAppsTab: View {
                     .font(.system(size: 13))
                     .frame(width: 14)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(AppleInteractiveButtonStyle(hoverScale: 1.08, pressedScale: 0.94))
             .help("Suggestions de sites web")
             
             // Add custom website
@@ -269,7 +224,7 @@ struct MonitoredAppsTab: View {
                     .font(.system(size: 13))
                     .frame(width: 14)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(AppleInteractiveButtonStyle(hoverScale: 1.08, pressedScale: 0.94))
             .help("Ajouter un site personnalisé")
             
             // Remove selected
@@ -285,7 +240,7 @@ struct MonitoredAppsTab: View {
                     .font(.system(size: 13, weight: .semibold))
                     .frame(width: 14, height: 14)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(AppleInteractiveButtonStyle(hoverScale: 1.08, pressedScale: 0.94))
             .controlSize(.regular)
             .disabled(selectedWebsite == nil)
             .help("Supprimer le site sélectionné")
@@ -302,6 +257,7 @@ struct MonitoredAppsTab: View {
             Image(systemName: "globe.badge.chevron.backward")
                 .font(.system(size: 48, weight: .ultraLight))
                 .foregroundStyle(.tertiary)
+                .appleHoverEffect(scale: 1.08, liftOffset: -2, hoverTintOpacity: 0)
             
             Text("Aucun site web surveillé")
                 .font(.system(.headline, design: .rounded))
@@ -320,6 +276,7 @@ struct MonitoredAppsTab: View {
                     Label("Suggestions", systemImage: "sparkles")
                 }
                 .buttonStyle(.borderedProminent)
+                .appleHoverEffect(scale: 1.04, liftOffset: -1, hoverTintOpacity: 0)
                 
                 Button {
                     newWebsiteName = ""
@@ -329,6 +286,7 @@ struct MonitoredAppsTab: View {
                     Label("Ajouter un site...", systemImage: "plus")
                 }
                 .buttonStyle(.bordered)
+                .appleHoverEffect(scale: 1.04, liftOffset: -1, hoverTintOpacity: 0)
             }
             
             Spacer()
@@ -369,44 +327,16 @@ struct MonitoredAppsTab: View {
                             $0.domain.localizedCaseInsensitiveCompare(suggestion.domain) == .orderedSame
                         }
                         
-                        HStack(spacing: 12) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill((settings.effectiveAccentColor ?? .accentColor).opacity(0.15))
-                                    .frame(width: 28, height: 28)
-                                
-                                Image(systemName: "globe")
-                                    .foregroundStyle(settings.effectiveAccentColor ?? .accentColor)
-                                    .font(.system(size: 14))
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(suggestion.name)
-                                    .font(.system(.body, design: .rounded, weight: .medium))
-                                
-                                Text(suggestion.domain)
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                            
-                            Spacer()
-                            
-                            if alreadyAdded {
-                                Label("Ajoutée", systemImage: "checkmark.circle.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(.green)
-                            } else {
-                                Button("Ajouter") {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        settings.addWebsite(name: suggestion.name, domain: suggestion.domain, isPredefined: true)
-                                    }
+                        WebsiteSuggestionRow(
+                            suggestion: suggestion,
+                            alreadyAdded: alreadyAdded,
+                            effectiveAccentColor: settings.effectiveAccentColor,
+                            onAdd: {
+                                withAnimation(.spring(response: 0.3)) {
+                                    settings.addWebsite(name: suggestion.name, domain: suggestion.domain, isPredefined: true)
                                 }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
                             }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 6)
+                        )
                     }
                 }
                 .padding(.vertical, 8)
@@ -501,7 +431,7 @@ struct MonitoredAppsTab: View {
                     .font(.system(size: 13))
                     .frame(width: 14)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(AppleInteractiveButtonStyle(hoverScale: 1.08, pressedScale: 0.94))
             .help("Suggestions d'apps")
             
             // Add from file browser
@@ -512,7 +442,7 @@ struct MonitoredAppsTab: View {
                     .font(.system(size: 13))
                     .frame(width: 14)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(AppleInteractiveButtonStyle(hoverScale: 1.08, pressedScale: 0.94))
             .help("Ajouter depuis /Applications")
             
             // Remove selected
@@ -528,7 +458,7 @@ struct MonitoredAppsTab: View {
                     .font(.system(size: 13, weight: .semibold))
                     .frame(width: 14, height: 14)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(AppleInteractiveButtonStyle(hoverScale: 1.08, pressedScale: 0.94))
             .controlSize(.regular)
             .disabled(selectedApp == nil)
             .help("Supprimer l'app sélectionnée")
@@ -578,6 +508,7 @@ struct MonitoredAppsTab: View {
             Image(systemName: "app.badge.checkmark")
                 .font(.system(size: 48, weight: .ultraLight))
                 .foregroundStyle(.tertiary)
+                .appleHoverEffect(scale: 1.08, liftOffset: -2, hoverTintOpacity: 0)
             
             Text("Aucune app surveillée")
                 .font(.system(.headline, design: .rounded))
@@ -595,6 +526,7 @@ struct MonitoredAppsTab: View {
                     Label("Suggestions", systemImage: "sparkles")
                 }
                 .buttonStyle(.borderedProminent)
+                .appleHoverEffect(scale: 1.04, liftOffset: -1, hoverTintOpacity: 0)
                 
                 Button {
                     showFilePicker = true
@@ -602,6 +534,7 @@ struct MonitoredAppsTab: View {
                     Label("Parcourir", systemImage: "folder")
                 }
                 .buttonStyle(.bordered)
+                .appleHoverEffect(scale: 1.04, liftOffset: -1, hoverTintOpacity: 0)
             }
             
             Spacer()
@@ -722,6 +655,7 @@ struct MonitoredAppsTab: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 6)
+                        .appleRowHover(cornerRadius: 8)
                     }
                 }
                 .padding(.vertical, 8)
@@ -752,6 +686,142 @@ struct MonitoredAppsTab: View {
             }
         case .failure(let error):
             print("File import error: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Website Row View with Apple Micro-Interactions
+
+struct WebsiteRowView: View {
+    let site: MonitoredWebsite
+    let isSelected: Bool
+    let effectiveAccentColor: Color?
+    let onToggle: () -> Void
+    let onDelete: () -> Void
+    let onSelect: () -> Void
+    
+    @State private var isHovered = false
+    @State private var isDeleteHovered = false
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill((effectiveAccentColor ?? .accentColor).opacity(site.isEnabled ? 0.15 : 0.05))
+                    .frame(width: 28, height: 28)
+                
+                Image(systemName: "globe")
+                    .font(.system(size: 14))
+                    .foregroundStyle(site.isEnabled ? (effectiveAccentColor ?? .accentColor) : .secondary)
+            }
+            .scaleEffect(isHovered ? 1.08 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.72), value: isHovered)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(site.name)
+                    .font(.system(.body, design: .rounded, weight: .medium))
+                
+                Text(site.domain)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: Binding(
+                get: { site.isEnabled },
+                set: { _ in onToggle() }
+            ))
+            .labelsHidden()
+            
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+                    .font(.system(size: 12))
+                    .foregroundStyle(isDeleteHovered ? .red : .red.opacity(0.8))
+                    .scaleEffect(isDeleteHovered ? 1.15 : 1.0)
+                    .animation(.spring(response: 0.2, dampingFraction: 0.65), value: isDeleteHovered)
+            }
+            .buttonStyle(.plain)
+            .onHover { isDeleteHovered = $0 }
+            .help("Supprimer")
+            .padding(.leading, 6)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.1) : (isHovered ? Color.primary.opacity(0.06) : Color.primary.opacity(0.035)))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect()
+        }
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                isHovered = hovering
+            }
+        }
+        .scaleEffect(isHovered ? 1.008 : 1.0)
+        .offset(y: isHovered ? -0.5 : 0)
+    }
+}
+
+// MARK: - Website Suggestion Row
+
+struct WebsiteSuggestionRow: View {
+    let suggestion: MonitoredWebsite
+    let alreadyAdded: Bool
+    let effectiveAccentColor: Color?
+    let onAdd: () -> Void
+    
+    @State private var isHovered = false
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill((effectiveAccentColor ?? .accentColor).opacity(0.15))
+                    .frame(width: 28, height: 28)
+                
+                Image(systemName: "globe")
+                    .foregroundStyle(effectiveAccentColor ?? .accentColor)
+                    .font(.system(size: 14))
+            }
+            .scaleEffect(isHovered ? 1.08 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.72), value: isHovered)
+            
+            VStack(alignment: .leading, spacing: 1) {
+                Text(suggestion.name)
+                    .font(.system(.body, design: .rounded, weight: .medium))
+                
+                Text(suggestion.domain)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            
+            Spacer()
+            
+            if alreadyAdded {
+                Label("Ajoutée", systemImage: "checkmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+            } else {
+                Button("Ajouter", action: onAdd)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .appleHoverEffect(scale: 1.05, liftOffset: -0.5, hoverTintOpacity: 0)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isHovered ? Color.primary.opacity(0.04) : Color.clear)
+        )
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.75)) {
+                isHovered = hovering
+            }
         }
     }
 }

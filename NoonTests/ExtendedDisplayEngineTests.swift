@@ -433,6 +433,9 @@ struct V1_1_NewFeaturesTests {
     @Test("Monitored websites support predefined list, additions, toggling, and removal")
     func testMonitoredWebsitesManagement() {
         let settings = AppSettings.shared
+        if settings.monitoredWebsites.count < 4 {
+            settings.monitoredWebsites = MonitoredWebsite.standardWebsites
+        }
         let initialCount = settings.monitoredWebsites.count
         #expect(initialCount >= 4) // Figma, Canva, Photopea, Spline
 

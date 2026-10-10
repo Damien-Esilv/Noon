@@ -16,27 +16,32 @@ struct AppRowView: View {
     var onDelete: (() -> Void)?
     
     @State private var isHovered = false
+    @State private var isDeleteHovered = false
     
     var body: some View {
         HStack(spacing: 12) {
-            // App Icon
-            if let icon = app.icon {
-                Image(nsImage: icon)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 32, height: 32)
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-            } else {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(.quaternary)
-                    .frame(width: 32, height: 32)
-                    .overlay(
-                        Image(systemName: "app.dashed")
-                            .foregroundStyle(.secondary)
-                            .font(.system(size: 16))
-                    )
+            // App Icon with subtle Apple hover scale
+            Group {
+                if let icon = app.icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 32, height: 32)
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .shadow(color: .black.opacity(isHovered ? 0.16 : 0.08), radius: isHovered ? 3 : 1.5, x: 0, y: isHovered ? 1.5 : 1)
+                } else {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(.quaternary)
+                        .frame(width: 32, height: 32)
+                        .overlay(
+                            Image(systemName: "app.dashed")
+                                .foregroundStyle(.secondary)
+                                .font(.system(size: 16))
+                        )
+                }
             }
+            .scaleEffect(isHovered ? 1.06 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.72), value: isHovered)
             
             // App Info
             VStack(alignment: .leading, spacing: 2) {
@@ -57,36 +62,41 @@ struct AppRowView: View {
                 // Running indicator
                 if isRunning {
                     runningBadge
+                        .transition(.scale.combined(with: .opacity))
                 }
                 
                 // Validity indicator
                 if !app.isValid {
                     invalidBadge
+                        .transition(.scale.combined(with: .opacity))
                 }
                 
-                // Delete button
+                // Delete button with spring micro-interaction
                 if isHovered, let onDelete = onDelete {
                     Button(action: onDelete) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 16))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(isDeleteHovered ? .red : .secondary)
+                            .scaleEffect(isDeleteHovered ? 1.15 : 1.0)
+                            .animation(.spring(response: 0.2, dampingFraction: 0.65), value: isDeleteHovered)
                     }
                     .buttonStyle(.plain)
-                    .transition(.opacity.combined(with: .scale))
+                    .onHover { isDeleteHovered = $0 }
+                    .transition(.opacity.combined(with: .scale(scale: 0.85)))
                 }
             }
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 10)
         .background(rowBackground)
-        // Ensure the entire rectangle is interactive, even the empty spaces
         .contentShape(Rectangle())
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.15)) {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
                 isHovered = hovering
             }
         }
-        .scaleEffect(isHovered ? 1.005 : 1.0)
+        .scaleEffect(isHovered ? 1.008 : 1.0)
+        .offset(y: isHovered ? -0.5 : 0)
     }
     
     // MARK: - Row Background (macOS 15 vs macOS 14)
@@ -113,11 +123,11 @@ struct AppRowView: View {
                         .blendMode(.overlay)
                         .opacity(isHovered ? 1.0 : 0.0)
                 )
+                .shadow(color: Color.black.opacity(isHovered ? 0.06 : 0.0), radius: 4, x: 0, y: 2)
                 .materialActiveAppearance(.matchWindow)
         } else {
-            // macOS 14 fallback: subtle primary fill on hover
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isHovered ? Color.primary.opacity(0.04) : .clear)
+                .fill(isHovered ? Color.primary.opacity(0.05) : .clear)
         }
     }
     
@@ -152,7 +162,6 @@ struct AppRowView: View {
                     .blendMode(.overlay)
             )
         } else {
-            // macOS 14 fallback
             HStack(spacing: 4) {
                 Circle()
                     .fill(.green)
@@ -196,7 +205,6 @@ struct AppRowView: View {
                     .blendMode(.overlay)
             )
         } else {
-            // macOS 14 fallback
             HStack(spacing: 4) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.caption2)
@@ -219,114 +227,67 @@ struct AppRowCompact: View {
     let app: MonitoredApp
     let isActive: Bool
     
+    @State private var isHovered = false
+    
     var body: some View {
-        if #available(macOS 15.0, *) {
-            HStack(spacing: 10) {
-                if let icon = app.icon {
-                    Image(nsImage: icon)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 20, height: 20)
-                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                        .shadow(color: .black.opacity(0.08), radius: 1, x: 0, y: 0.5)
-                }
-                
-                Text(app.name)
-                    .font(.system(.caption, design: .rounded, weight: isActive ? .semibold : .regular))
-                    .foregroundStyle(isActive ? .primary : .secondary)
-                    .lineLimit(1)
-                
-                Spacer()
-                
-                if isActive {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(.orange)
-                            .frame(width: 6, height: 6)
-                            .shadow(color: .orange.opacity(0.5), radius: 2)
-                        
-                        Text("Actif")
-                            .font(.system(size: 9, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.orange)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(.ultraThinMaterial)
-                            .overlay(
-                                Capsule()
-                                    .fill(Color.orange.opacity(0.14))
-                                    .blendMode(.color)
-                            )
-                    )
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(Color.orange.opacity(0.3), lineWidth: 0.5)
-                            .blendMode(.overlay)
-                    )
-                }
+        HStack(spacing: 10) {
+            if let icon = app.icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 20, height: 20)
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .shadow(color: .black.opacity(isHovered ? 0.12 : 0.06), radius: 1.5, x: 0, y: 0.5)
+                    .scaleEffect(isHovered ? 1.08 : 1.0)
             }
-            .padding(.vertical, 3)
-            .padding(.horizontal, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(isActive ? Color.orange.opacity(0.06) : Color.clear)
-                    .blendMode(.plusLighter)
-            )
-        } else {
-            // macOS 14 fallback
-            HStack(spacing: 10) {
-                if let icon = app.icon {
-                    Image(nsImage: icon)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 20, height: 20)
-                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                }
-                
-                Text(app.name)
-                    .font(.system(.caption, design: .rounded, weight: isActive ? .semibold : .regular))
-                    .lineLimit(1)
-                
-                Spacer()
-                
-                if isActive {
+            
+            Text(app.name)
+                .font(.system(.caption, design: .rounded, weight: isActive ? .semibold : .regular))
+                .foregroundStyle(isActive ? .primary : (isHovered ? .primary : .secondary))
+                .lineLimit(1)
+            
+            Spacer()
+            
+            if isActive {
+                HStack(spacing: 4) {
                     Circle()
                         .fill(.orange)
                         .frame(width: 6, height: 6)
+                        .shadow(color: .orange.opacity(0.5), radius: 2)
+                    
+                    Text("Actif")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.orange)
                 }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            Capsule()
+                                .fill(Color.orange.opacity(0.14))
+                                .blendMode(.color)
+                        )
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(Color.orange.opacity(0.3), lineWidth: 0.5)
+                        .blendMode(.overlay)
+                )
             }
         }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(isActive ? Color.orange.opacity(0.08) : (isHovered ? Color.primary.opacity(0.04) : Color.clear))
+        )
+        .contentShape(Rectangle())
+        .scaleEffect(isHovered ? 1.01 : 1.0)
+        .animation(.spring(response: 0.22, dampingFraction: 0.75), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
-}
-
-#Preview {
-    VStack(spacing: 4) {
-        AppRowView(
-            app: MonitoredApp(name: "Adobe Photoshop", bundleIdentifier: "com.adobe.Photoshop", path: "/Applications/Adobe Photoshop 2025/Adobe Photoshop 2025.app"),
-            isRunning: true,
-            onDelete: {}
-        )
-        
-        AppRowView(
-            app: MonitoredApp(name: "Missing App", bundleIdentifier: "com.missing.app", path: "/Applications/Missing.app"),
-            isRunning: false,
-            onDelete: {}
-        )
-        
-        Divider()
-        
-        AppRowCompact(
-            app: MonitoredApp(name: "Adobe Photoshop", bundleIdentifier: "com.adobe.Photoshop", path: "/Applications/Adobe Photoshop 2025/Adobe Photoshop 2025.app"),
-            isActive: true
-        )
-        
-        AppRowCompact(
-            app: MonitoredApp(name: "DaVinci Resolve", bundleIdentifier: "com.blackmagic-design.DaVinciResolve", path: "/Applications/DaVinci Resolve/DaVinci Resolve.app"),
-            isActive: false
-        )
-    }
-    .padding()
-    .frame(width: 400)
 }

@@ -17,6 +17,9 @@ struct MenuBarView: View {
     
     @Environment(\.dismiss) private var dismiss
     
+    @State private var isHoveringPause = false
+    @State private var isHoveringTrueTone = false
+    @State private var isHoveringNightShift = false
     @State private var isHoveringSettings = false
     @State private var isHoveringQuit = false
     
@@ -90,7 +93,6 @@ struct MenuBarView: View {
     
     private var headerSection: some View {
         HStack(spacing: 10) {
-            // App Icon with glow (macOS 15 material + blend mode vs macOS 14 fallback)
             headerIconView
             
             VStack(alignment: .leading, spacing: 2) {
@@ -102,9 +104,9 @@ struct MenuBarView: View {
             
             Spacer()
             
-            // Pause/Resume button
+            // Pause/Resume button with Apple spring micro-interaction
             Button {
-                withAnimation(.spring(response: 0.3)) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     if settings.isMonitoringEnabled {
                         monitorService.pauseMonitoring()
                     } else {
@@ -115,9 +117,12 @@ struct MenuBarView: View {
                 Image(systemName: settings.isMonitoringEnabled ? "pause.circle" : "play.circle")
                     .font(.system(size: 20))
                     .foregroundStyle(settings.isMonitoringEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .green)
+                    .scaleEffect(isHoveringPause ? 1.12 : 1.0)
                     .contentTransition(.symbolEffect(.replace))
+                    .animation(.spring(response: 0.22, dampingFraction: 0.65), value: isHoveringPause)
             }
             .buttonStyle(.plain)
+            .onHover { isHoveringPause = $0 }
             .help(settings.isMonitoringEnabled ? "Mettre en pause" : "Reprendre")
         }
         .padding(.horizontal, 16)
@@ -163,7 +168,6 @@ struct MenuBarView: View {
             }
             .frame(width: 36, height: 36)
         } else {
-            // macOS 14 fallback
             ZStack {
                 Circle()
                     .fill(statusColor.opacity(0.15))
@@ -200,6 +204,7 @@ struct MenuBarView: View {
                             .monospacedDigit()
                     }
                 }
+                .appleHoverEffect(scale: 1.015, liftOffset: -1)
             }
             
             // Error display
@@ -236,7 +241,7 @@ struct MenuBarView: View {
     // MARK: - Display Controls
     
     private var displayControlsSection: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             // True Tone row
             if displayService.isTrueToneSupported {
                 HStack {
@@ -252,6 +257,15 @@ struct MenuBarView: View {
                     
                     trueToneStatusBadge
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(isHoveringTrueTone ? Color.primary.opacity(0.04) : Color.clear)
+                )
+                .scaleEffect(isHoveringTrueTone ? 1.008 : 1.0)
+                .animation(.spring(response: 0.22, dampingFraction: 0.75), value: isHoveringTrueTone)
+                .onHover { isHoveringTrueTone = $0 }
             }
             
             // Night Shift row
@@ -268,9 +282,18 @@ struct MenuBarView: View {
                 
                 nightShiftStatusBadge
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(isHoveringNightShift ? Color.primary.opacity(0.04) : Color.clear)
+            )
+            .scaleEffect(isHoveringNightShift ? 1.008 : 1.0)
+            .animation(.spring(response: 0.22, dampingFraction: 0.75), value: isHoveringNightShift)
+            .onHover { isHoveringNightShift = $0 }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
     }
     
     @ViewBuilder
@@ -301,7 +324,6 @@ struct MenuBarView: View {
                     )
             )
         } else {
-            // macOS 14 fallback
             HStack(spacing: 6) {
                 Circle()
                     .fill(isManaged ? (isEnabled ? .green : .red.opacity(0.6)) : .red.opacity(0.6))
@@ -342,7 +364,6 @@ struct MenuBarView: View {
                     )
             )
         } else {
-            // macOS 14 fallback
             HStack(spacing: 6) {
                 Circle()
                     .fill(isManaged ? (isEnabled ? .green : .red.opacity(0.6)) : .red.opacity(0.6))
@@ -355,96 +376,30 @@ struct MenuBarView: View {
         }
     }
     
-
     // MARK: - Connected Displays Section
     
     private var connectedDisplaysSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("Écrans Connectés")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
+                .padding(.horizontal, 8)
             
             let displays = displayManager.connectedDisplays.isEmpty
                 ? [DisplayInfo(id: CGMainDisplayID(), name: "Écran Retina", isBuiltin: true, isXDR: false, isAppleDisplay: true, isManagementEnabled: true)]
                 : displayManager.connectedDisplays
             
-            VStack(spacing: 6) {
+            VStack(spacing: 2) {
                 ForEach(displays) { display in
-                    HStack(spacing: 8) {
-                        Image(systemName: display.isBuiltin ? "laptopcomputer" : "display")
-                            .font(.system(size: 13))
-                            .foregroundStyle(display.isManagementEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
-                            .frame(width: 18)
-                        
-                        Text(display.name)
-                            .font(.system(.subheadline, design: .rounded))
-                            .lineLimit(1)
-                        
-                        if display.isXDR {
-                            Text("XDR")
-                                .font(.system(size: 8, weight: .bold, design: .rounded))
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Color.purple.opacity(0.2))
-                                .foregroundColor(.purple)
-                                .clipShape(Capsule())
-                        }
-                        
-                        Spacer()
-                        
-                        displayStatusBadge(for: display)
-                    }
+                    ConnectedDisplayRow(display: display, settings: settings, displayService: displayService)
                 }
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 8)
         .padding(.vertical, 4)
     }
     
-    @ViewBuilder
-    private func displayStatusBadge(for display: DisplayInfo) -> some View {
-        let isManaged = display.isManagementEnabled
-        let hasError = display.hasError || (displayService.lastError != nil)
-        
-        let dotColor: Color = hasError ? .orange : (isManaged ? .green : .red.opacity(0.8))
-        let labelText: LocalizedStringKey = hasError ? "Erreur" : (isManaged ? "Surveillé" : "Non géré")
-        
-        if #available(macOS 15.0, *) {
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(dotColor)
-                    .frame(width: 6, height: 6)
-                    .shadow(color: dotColor.opacity(0.5), radius: 2)
-                
-                Text(labelText)
-                    .font(.system(.caption2, design: .rounded, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                    Capsule()
-                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
-                        .blendMode(.overlay)
-                )
-            )
-        } else {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(dotColor)
-                    .frame(width: 6, height: 6)
-                
-                Text(labelText)
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
     // MARK: - Running Apps Section
     
     private var runningAppsSection: some View {
@@ -461,7 +416,7 @@ struct MenuBarView: View {
                         isActive: monitorService.activeMonitoredApp?.id == app.id
                     )
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 2)
                 }
             }
         }
@@ -472,7 +427,7 @@ struct MenuBarView: View {
     
     private var footerSection: some View {
         HStack {
-            // Settings button — native SettingsLink prevents popover jump bugs.
+            // Settings button
             SettingsLink {
                 HStack(spacing: 5) {
                     Image(systemName: "gearshape")
@@ -484,12 +439,12 @@ struct MenuBarView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(settingsHoverBackground)
+                .scaleEffect(isHoveringSettings ? 1.04 : 1.0)
+                .animation(.spring(response: 0.22, dampingFraction: 0.72), value: isHoveringSettings)
             }
             .buttonStyle(.plain)
             .onHover { isHoveringSettings = $0 }
             .simultaneousGesture(TapGesture().onEnded {
-                // Wait for the popup to fully close, then force settings to front
-                // if it's already open (SettingsLink alone doesn't do this reliably).
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     NSApp.activate(ignoringOtherApps: true)
                     for window in NSApp.windows {
@@ -517,6 +472,8 @@ struct MenuBarView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(quitHoverBackground)
+                .scaleEffect(isHoveringQuit ? 1.04 : 1.0)
+                .animation(.spring(response: 0.22, dampingFraction: 0.72), value: isHoveringQuit)
             }
             .buttonStyle(.plain)
             .onHover { isHoveringQuit = $0 }
@@ -538,7 +495,6 @@ struct MenuBarView: View {
                         .opacity(isHoveringSettings ? 1.0 : 0.0)
                 )
         } else {
-            // macOS 14 fallback
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(isHoveringSettings ? Color.primary.opacity(0.06) : .clear)
         }
@@ -562,21 +518,108 @@ struct MenuBarView: View {
                         .opacity(isHoveringQuit ? 1.0 : 0.0)
                 )
         } else {
-            // macOS 14 fallback
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(isHoveringQuit ? Color.red.opacity(0.08) : .clear)
+                .fill(isHoveringQuit ? Color.red.opacity(0.1) : .clear)
         }
     }
-    
-    // MARK: - Helpers
     
     private var statusColor: Color {
         switch monitorService.currentState {
         case .normal:       return settings.colorNormal
         case .creativeMode: return settings.colorCreative
         case .error:        return settings.colorError
-        case .timerActive:  return settings.colorCreative
+        case .timerActive:  return settings.colorCreative.opacity(0.8)
         case .paused:       return .gray
+        }
+    }
+}
+
+// MARK: - Connected Display Row with Apple Hover Interaction
+
+private struct ConnectedDisplayRow: View {
+    let display: DisplayInfo
+    let settings: AppSettings
+    let displayService: DisplayService
+    
+    @State private var isHovered = false
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: display.isBuiltin ? "laptopcomputer" : "display")
+                .font(.system(size: 13))
+                .foregroundStyle(display.isManagementEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
+                .frame(width: 18)
+                .scaleEffect(isHovered ? 1.08 : 1.0)
+            
+            Text(display.name)
+                .font(.system(.subheadline, design: .rounded))
+                .lineLimit(1)
+            
+            if display.isXDR {
+                Text("XDR")
+                    .font(.system(size: 8, weight: .bold, design: .rounded))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(Color.purple.opacity(0.2))
+                    .foregroundColor(.purple)
+                    .clipShape(Capsule())
+            }
+            
+            Spacer()
+            
+            displayStatusBadge(for: display)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(isHovered ? Color.primary.opacity(0.04) : Color.clear)
+        )
+        .scaleEffect(isHovered ? 1.008 : 1.0)
+        .animation(.spring(response: 0.22, dampingFraction: 0.75), value: isHovered)
+        .onHover { isHovered = $0 }
+    }
+    
+    @ViewBuilder
+    private func displayStatusBadge(for display: DisplayInfo) -> some View {
+        let isManaged = display.isManagementEnabled
+        let hasError = display.hasError || (displayService.lastError != nil)
+        
+        let dotColor: Color = hasError ? .orange : (isManaged ? .green : .red.opacity(0.8))
+        let labelText: LocalizedStringKey = hasError ? "Erreur" : (isManaged ? "Surveillé" : "Non géré")
+        
+        if #available(macOS 15.0, *) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: dotColor.opacity(0.5), radius: 2)
+                
+                Text(labelText)
+                    .font(.system(.caption2, design: .rounded, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
+                            .blendMode(.overlay)
+                    )
+            )
+        } else {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 6, height: 6)
+                
+                Text(labelText)
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }
