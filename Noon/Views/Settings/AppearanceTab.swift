@@ -50,39 +50,7 @@ struct AppearanceTab: View {
                 HStack(spacing: 12) {
                     ForEach(MenuBarIconStyle.allCases) { style in
                         let isSelected = settings.menuBarIconStyle == style
-                        Button {
-                            withAnimation(.spring(response: 0.3)) {
-                                settings.menuBarIconStyle = style
-                            }
-                        } label: {
-                            VStack(spacing: 8) {
-                                Image(systemName: style.rawValue)
-                                    .font(.system(size: 24, weight: .medium))
-                                    .foregroundStyle(isSelected ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
-                            }
-                            .frame(width: 64, height: 56)
-                            .background(
-                                ZStack {
-                                    if isSelected {
-                                        (settings.effectiveAccentColor ?? .accentColor).opacity(0.1)
-                                    }
-                                    Rectangle().fill(.regularMaterial)
-                                }
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .strokeBorder(
-                                        isSelected ? (settings.effectiveAccentColor ?? .accentColor).opacity(0.8) : Color.primary.opacity(0.1),
-                                        lineWidth: isSelected ? 1.5 : 0.5
-                                    )
-                            )
-                            .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
-                        }
-                        .buttonStyle(.plain)
-                        
-                        // Label below button
-                        // (shown separately so label doesn't stretch button width)
+                        iconStyleButton(style: style, isSelected: isSelected)
                     }
                     Spacer()
                 }
@@ -104,6 +72,26 @@ struct AppearanceTab: View {
             Label("Icône", systemImage: "star.circle")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
         }
+    }
+    
+    private func iconStyleButton(style: MenuBarIconStyle, isSelected: Bool) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.3)) {
+                settings.menuBarIconStyle = style
+            }
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: style.rawValue)
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundStyle(isSelected ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
+            }
+            .frame(width: 64, height: 56)
+            .modifier(IconStyleCardModifier(
+                isSelected: isSelected,
+                accentColor: settings.effectiveAccentColor ?? .accentColor
+            ))
+        }
+        .buttonStyle(.plain)
     }
     
     // MARK: - Color Scheme
@@ -148,10 +136,7 @@ struct AppearanceTab: View {
                 
                 if settings.accentColorMode == .system {
                     HStack(spacing: 12) {
-                        Circle()
-                            .fill(Color.accentColor) // System accent
-                            .frame(width: 32, height: 32)
-                            .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        systemAccentSwatch
                         
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Accent système utilisé")
@@ -171,17 +156,7 @@ struct AppearanceTab: View {
                             
                         HStack(spacing: 12) {
                             ForEach(presetColors.prefix(7), id: \.self) { preset in
-                                Circle()
-                                    .fill(preset)
-                                    .frame(width: 24, height: 24)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.primary.opacity(0.2), lineWidth: settings.customAccentColor == preset ? 2 : 0)
-                                            .padding(-2)
-                                    )
-                                    .onTapGesture {
-                                        withAnimation { settings.customAccentColor = preset }
-                                    }
+                                presetColorSwatch(preset: preset)
                             }
                             Spacer()
                         }
@@ -207,6 +182,70 @@ struct AppearanceTab: View {
         } label: {
             Label("Avancé", systemImage: "slider.horizontal.3")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
+        }
+    }
+    
+    @ViewBuilder
+    private var systemAccentSwatch: some View {
+        if #available(macOS 15.0, *) {
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 32, height: 32)
+                .overlay(
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.4), Color.white.opacity(0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                        .blendMode(.overlay)
+                )
+                .shadow(color: Color.accentColor.opacity(0.3), radius: 4, x: 0, y: 2)
+        } else {
+            // macOS 14 fallback
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 32, height: 32)
+                .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+        }
+    }
+    
+    @ViewBuilder
+    private func presetColorSwatch(preset: Color) -> some View {
+        let isSelected = settings.customAccentColor == preset
+        if #available(macOS 15.0, *) {
+            Circle()
+                .fill(preset)
+                .frame(width: 24, height: 24)
+                .overlay(
+                    Circle()
+                        .strokeBorder(
+                            isSelected ? Color.primary.opacity(0.35) : Color.white.opacity(0.15),
+                            lineWidth: isSelected ? 2 : 0.5
+                        )
+                        .blendMode(.overlay)
+                        .padding(isSelected ? -2 : 0)
+                )
+                .shadow(color: preset.opacity(isSelected ? 0.35 : 0.1), radius: 3, x: 0, y: 1)
+                .onTapGesture {
+                    withAnimation { settings.customAccentColor = preset }
+                }
+        } else {
+            // macOS 14 fallback
+            Circle()
+                .fill(preset)
+                .frame(width: 24, height: 24)
+                .overlay(
+                    Circle()
+                        .stroke(Color.primary.opacity(0.2), lineWidth: isSelected ? 2 : 0)
+                        .padding(-2)
+                )
+                .onTapGesture {
+                    withAnimation { settings.customAccentColor = preset }
+                }
         }
     }
     
@@ -259,11 +298,8 @@ struct AppearanceTab: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                // Preview icon
-                Image(systemName: settings.menuBarIconStyle.rawValue)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(previewColor)
-                    .frame(width: 32)
+                // Preview icon container
+                previewIconContainer(previewColor: previewColor)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
@@ -279,12 +315,13 @@ struct AppearanceTab: View {
             // Palette + Picker
             HStack(spacing: 8) {
                 ForEach(presetColors, id: \.self) { preset in
+                    let isCurrentColor = previewColor == preset
                     Circle()
                         .fill(preset)
                         .frame(width: 20, height: 20)
                         .overlay(
                             Circle()
-                                .stroke(Color.primary.opacity(0.2), lineWidth: previewColor == preset ? 2 : 0)
+                                .stroke(Color.primary.opacity(0.2), lineWidth: isCurrentColor ? 2 : 0)
                                 .padding(-2)
                         )
                         .onTapGesture {
@@ -298,6 +335,37 @@ struct AppearanceTab: View {
                     .labelsHidden()
             }
             .padding(.leading, 44)
+        }
+    }
+    
+    @ViewBuilder
+    private func previewIconContainer(previewColor: Color) -> some View {
+        if #available(macOS 15.0, *) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(previewColor.opacity(0.12))
+                            .blendMode(.color)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(previewColor.opacity(0.3), lineWidth: 0.5)
+                            .blendMode(.overlay)
+                    )
+                
+                Image(systemName: settings.menuBarIconStyle.rawValue)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(previewColor)
+            }
+            .frame(width: 32, height: 32)
+        } else {
+            // macOS 14 fallback
+            Image(systemName: settings.menuBarIconStyle.rawValue)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(previewColor)
+                .frame(width: 32)
         }
     }
     
@@ -318,6 +386,89 @@ struct AppearanceTab: View {
             .controlSize(.small)
             .tint(nil)
             .foregroundStyle(.primary)
+        }
+    }
+}
+
+// MARK: - Icon Style Card Modifier
+
+private struct IconStyleCardModifier: ViewModifier {
+    let isSelected: Bool
+    let accentColor: Color
+    
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content
+                .background(
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(.regularMaterial)
+                        
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(accentColor.opacity(0.12))
+                                .blendMode(.color)
+                            
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [accentColor.opacity(0.15), accentColor.opacity(0.02)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .blendMode(.plusLighter)
+                        }
+                    }
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                stops: [
+                                    .init(
+                                        color: isSelected ? accentColor.opacity(0.8) : Color.white.opacity(0.15),
+                                        location: 0.0
+                                    ),
+                                    .init(
+                                        color: isSelected ? accentColor.opacity(0.4) : Color.white.opacity(0.05),
+                                        location: 1.0
+                                    )
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isSelected ? 1.5 : 0.5
+                        )
+                        .blendMode(.overlay)
+                )
+                .shadow(
+                    color: isSelected ? accentColor.opacity(0.2) : Color.black.opacity(0.06),
+                    radius: isSelected ? 6 : 3,
+                    x: 0,
+                    y: 2
+                )
+                .materialActiveAppearance(.matchWindow)
+        } else {
+            // macOS 14 fallback
+            content
+                .background(
+                    ZStack {
+                        if isSelected {
+                            accentColor.opacity(0.1)
+                        }
+                        Rectangle().fill(.regularMaterial)
+                    }
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(
+                            isSelected ? accentColor.opacity(0.8) : Color.primary.opacity(0.1),
+                            lineWidth: isSelected ? 1.5 : 0.5
+                        )
+                )
+                .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
         }
     }
 }

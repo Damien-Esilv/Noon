@@ -36,6 +36,9 @@ struct NoonApp: App {
                 .id("menubar-\(settings.appLanguage.rawValue)")
                 .tint(settings.effectiveAccentColor)
                 .preferredColorScheme(settings.appColorScheme == .system ? nil : (settings.appColorScheme == .light ? .light : .dark))
+                .onOpenURL { url in
+                    handleIncomingURL(url)
+                }
             } else {
                 VStack(spacing: 12) {
                     ProgressView()
@@ -45,6 +48,9 @@ struct NoonApp: App {
                         .foregroundStyle(.secondary)
                 }
                 .padding(20)
+                .onOpenURL { url in
+                    handleIncomingURL(url)
+                }
             }
         } label: {
             menuBarLabel
@@ -65,6 +71,9 @@ struct NoonApp: App {
                 .environment(\.locale, settings.selectedLocale)
                 .tint(settings.effectiveAccentColor)
                 .preferredColorScheme(settings.appColorScheme == .system ? nil : (settings.appColorScheme == .light ? .light : .dark))
+                .onOpenURL { url in
+                    handleIncomingURL(url)
+                }
                 .onAppear {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         NSApp.setActivationPolicy(.regular)
@@ -156,5 +165,59 @@ struct NoonApp: App {
         
         // Sync login item state
         settings.launchAtLogin = LoginItemService.shared.isEnabled
+    }
+
+    // MARK: - Automation & URL Routing (noon://)
+
+    private func handleIncomingURL(_ url: URL) {
+        guard let command = NoonCommandRouter.shared.parseURL(url) else { return }
+
+        Task { @MainActor in
+            switch command {
+            case .toggleCreativeMode:
+                if DisplayManager.shared.isCreativeModeActive {
+                    await DisplayManager.shared.restoreNormalInterventions()
+                    displayService.restoreFromCreativeMode(settings: settings)
+                } else {
+                    let config = PerAppActionConfig(
+                        manageAutoBrightness: settings.manageAutoBrightness,
+                        calibrationTarget: settings.lock100NitsCalibration ? .appleRecommended : .sliderPercent(1.0)
+                    )
+                    await DisplayManager.shared.applyCreativeInterventions(for: config)
+                    displayService.disableForCreativeMode(settings: settings)
+                }
+
+            case .enableCreativeMode:
+                let config = PerAppActionConfig(
+                    manageAutoBrightness: settings.manageAutoBrightness,
+                    calibrationTarget: settings.lock100NitsCalibration ? .appleRecommended : .sliderPercent(1.0)
+                )
+                await DisplayManager.shared.applyCreativeInterventions(for: config)
+                displayService.disableForCreativeMode(settings: settings)
+
+            case .disableCreativeMode:
+                await DisplayManager.shared.restoreNormalInterventions()
+                displayService.restoreFromCreativeMode(settings: settings)
+
+            case .setPreset(let preset):
+                if let mainScreen = NSScreen.main,
+                   let id = mainScreen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID {
+                    try? await ApplePresetController.shared.setActivePreset(preset, for: id)
+                }
+
+            case .setCalibratedBrightness(let target):
+                let config = PerAppActionConfig(calibrationTarget: target)
+                await DisplayManager.shared.applyCreativeInterventions(for: config)
+
+            case .setBrightness(let val):
+                if let mainScreen = NSScreen.main,
+                   let id = mainScreen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID {
+                    try? await BrightnessManager.shared.setBrightness(val, for: id)
+                }
+
+            case .statusQuery:
+                break
+            }
+        }
     }
 }

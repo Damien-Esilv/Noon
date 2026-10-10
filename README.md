@@ -1,31 +1,50 @@
 # ☀️ Noon
 
-**Professional Display Accuracy for Creative macOS Workflows**
+**Professional Display Accuracy & Color Fidelity for macOS Workflows**
 
-Noon is a premium macOS utility designed for photographers, colorists, and designers. It ensures a 100% color-accurate environment by dynamically managing **True Tone** and **Night Shift** based on the active professional applications in your workflow.
+Noon is a premium macOS utility designed for photographers, colorists, digital artists, and designers. It guarantees a 100% color-accurate studio environment by dynamically managing **True Tone**, **Night Shift**, **Apple XDR Reference Presets**, **ColorSync Profiles**, **Display Luminance (100 Nits SDR Studio Reference)**, and **External Monitor DDC/CI Hardware Presets** based on the active creative tools in your workflow.
 
 ---
 
 ## 🚀 Key Features
 
-### 🎯 Intelligent App Monitoring
-Noon monitors your foreground applications in real-time. When a creative tool (e.g., Photoshop, DaVinci Resolve, Lightroom) is active, Noon instantly disables display tinting to guarantee color fidelity.
+### 🎯 Intelligent Creative App & Web Tool Monitoring
+- **Native Applications**: Real-time foreground process inspection recognizes Photoshop, Lightroom, DaVinci Resolve, Final Cut Pro, Illustrator, Blender, Affinity Suite, and custom user-defined apps.
+- **Web Creative Tools**: Automatically detects design sessions in web browsers (Safari, Chrome, Arc, Edge, Brave, Firefox) for **Figma**, **Canva**, **Photopea**, and **Spline**.
 
-### ⏱ Adaptive Reactivation Timer
-Noon features a smart duration logic to avoid flickering when switching briefly between apps. The delay is fully customizable from **1 second to 30 minutes** with an adaptive scale for maximum precision:
+### 🖥️ Extended Display & Hardware Calibration Engine
+- **Apple Pro Display XDR & Liquid Retina XDR Presets**: Dynamically switches reference presets (`Photography P3-D65`, `Design & Print P3-D50`, `Digital Cinema P3-DCI`, `HDTV Video BT.709`) and detects hardware luminance locks.
+- **External Monitor Hardware DDC/CI Control**: Transmits standard DDC/CI commands over I2C (`IOAVService`) to calibrate external screens without third-party tools.
+- **ColorSync Profile Management**: Switches and restores display ICC profiles (`Display P3`, `sRGB`, `Adobe RGB (1998)`).
+- **100 Nits SDR Studio Calibration Lock**: Locks calibrated reference luminance (100 nits on XDR displays, 50% slider on Retina displays) and overrides macOS ambient auto-brightness during critical color tasks.
+- **Multi-Display Selective Targeting**: Manage each display individually or exclude secondary monitors directly from the Displays tab.
+
+### 💡 AppleLMU Ambient Light Drift Monitoring
+- Interfaces directly with macOS ambient light sensors (`AppleLMU`).
+- Establishes a lighting baseline upon entering Creative Mode and alerts you if ambient light changes by more than 30%, preventing perception errors caused by room lighting drift.
+
+### 🔔 Dynamic Notch & Menu Bar HUD
+- A floating, non-activating glassmorphic badge appears under the MacBook notch or menu bar to confirm active color profiles, calibration targets, and ambient light stability.
+
+### ⚡ Automation & URL Scheme
+- Control Noon via the `noon://` custom URL scheme or CLI:
+  ```bash
+  open "noon://toggle"
+  open "noon://enable?app=Photoshop"
+  open "noon://preset?name=photography"
+  open "noon://calibrate?mode=recommended"
+  ```
+
+### ⏱️ Adaptive Reactivation Timer
+Noon features customizable cooldown intervals to avoid display flickering when switching briefly between tasks:
 - **1s to 15s**: 1-second increments.
 - **20s to 5min**: 10-second increments.
 - **6min to 30min**: 1-minute increments.
 
-### 🎨 Personalized Experience
-- **Sound on Toggle**: Receive satisfying audio feedback whenever Noon switches your display mode.
-- **Adaptive Iconography**: The Menu Bar icon sub-updates its appearance (filled/outline) to indicate whether a creative mode is active at a glance.
-- **Smart Auto-Detection**: Noon automatically recognizes industry-standard apps like Adobe Creative Cloud, DaVinci Resolve, and Final Cut Pro right out of the box.
-
-### 🛠 Technical Excellence
-- **Objective-C Bridge**: Interfaces with Apple's private `CoreBrightness.framework` via a robust bridging header, providing low-level, hardware-synchronized control over True Tone and Night Shift.
-- **Dynamic Dock Visibility**: To maintain a clean workspace, Noon operates as a Menu Bar extra. The Dock icon appears dynamically **only** when the Settings window is in focus, utilizing AppKit's activation policy (Accessory mode by default).
-- **Glassmorphism UI**: Built exclusively with SwiftUI using modern material effects (Ultra Thin Material) to match the macOS Sequoia design language.
+### 🎨 Modern macOS Sequoia Design
+- Built entirely with modern SwiftUI and Ultra Thin Material glassmorphism.
+- Accessory Menu Bar app by default with dynamic Dock appearance when Settings are displayed.
+- Dynamic Menu Bar icon states (filled / outline) reflecting active calibration.
 
 ---
 
@@ -47,15 +66,16 @@ Noon features a smart duration logic to avoid flickering when switching briefly 
 
 ## 📦 Installation
 
-### GitHub Releases
-1. Download the latest `.dmg` from the [Releases](https://github.com/Damien-Esilv/Noon/releases) page.
-2. Drag **Noon** to your Applications folder.
-3. Launch and grant necessary system permissions.
+### Direct Download
+1. Download the latest release from the [Releases](https://github.com/Damien-Esilv/Noon/releases) page.
+2. Drag **Noon.app** to your `/Applications` folder.
+3. Launch Noon and grant Accessibility permissions when prompted (required for browser web-app detection).
 
-### Homebrew Cask 
-Install via Homebrew with a single command:
+### Build from Source
 ```bash
-brew install --cask damien-esilv/noon/noon
+git clone https://github.com/Damien-Esilv/Noon.git
+cd Noon
+xcodebuild -scheme Noon -configuration Release build
 ```
 
 ---

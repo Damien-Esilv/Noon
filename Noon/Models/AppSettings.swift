@@ -77,26 +77,33 @@ final class AppSettings {
     // MARK: - Storage Keys
     
     private enum Keys {
-        static let monitoredApps      = "noon_monitoredApps"
-        static let reactivationMode   = "noon_reactivationMode"
-        static let timerDuration      = "noon_timerDuration"
-        static let launchAtLogin      = "noon_launchAtLogin"
-        static let showNotifications  = "noon_showNotifications"
-        static let manageTrueTone     = "noon_manageTrueTone"
-        static let manageNightShift   = "noon_manageNightShift"
-        static let soundOnToggle      = "noon_soundOnToggle"
-        static let iconStyleNormal    = "noon_iconStyleNormal"
-        static let colorNormal        = "noon_colorNormal"
-        static let colorCreative      = "noon_colorCreative"
-        static let colorError         = "noon_colorError"
-        static let showTimerInMenuBar = "noon_showTimerInMenuBar"
-        static let resetTimerOnReturn = "noon_resetTimerOnReturn"
-        static let menuBarIconStyle   = "noon_menuBarIconStyle"
-        static let isMonitoringEnabled = "noon_isMonitoringEnabled"
-        static let appLanguage        = "noon_appLanguage"
-        static let accentColorMode    = "noon_accentColorMode"
-        static let customAccentColor  = "noon_customAccentColor"
-        static let appColorScheme     = "noon_appColorScheme"
+        static let monitoredApps              = "noon_monitoredApps"
+        static let reactivationMode           = "noon_reactivationMode"
+        static let timerDuration              = "noon_timerDuration"
+        static let launchAtLogin              = "noon_launchAtLogin"
+        static let showNotifications          = "noon_showNotifications"
+        static let manageTrueTone             = "noon_manageTrueTone"
+        static let manageNightShift           = "noon_manageNightShift"
+        static let soundOnToggle              = "noon_soundOnToggle"
+        static let iconStyleNormal            = "noon_iconStyleNormal"
+        static let colorNormal                = "noon_colorNormal"
+        static let colorCreative              = "noon_colorCreative"
+        static let colorError                 = "noon_colorError"
+        static let showTimerInMenuBar         = "noon_showTimerInMenuBar"
+        static let resetTimerOnReturn         = "noon_resetTimerOnReturn"
+        static let menuBarIconStyle           = "noon_menuBarIconStyle"
+        static let isMonitoringEnabled        = "noon_isMonitoringEnabled"
+        static let appLanguage                = "noon_appLanguage"
+        static let accentColorMode            = "noon_accentColorMode"
+        static let customAccentColor          = "noon_customAccentColor"
+        static let appColorScheme             = "noon_appColorScheme"
+        
+        // Display & Advanced Color Fidelity Keys
+        static let lock100NitsCalibration     = "noon_lock100NitsCalibration"
+        static let manageAutoBrightness       = "noon_manageAutoBrightness"
+        static let enableAmbientLightMonitoring = "noon_enableAmbientLightMonitoring"
+        static let showHUDOnSwitch            = "noon_showHUDOnSwitch"
+        static let monitorWebApps             = "noon_monitorWebApps"
     }
     
     // MARK: - General Settings
@@ -152,6 +159,28 @@ final class AppSettings {
             return Locale(identifier: "en")
         }
         return Locale(identifier: appLanguage.rawValue)
+    }
+
+    // MARK: - Display Engine & Calibration Settings
+
+    var lock100NitsCalibration: Bool {
+        didSet { UserDefaults.standard.set(lock100NitsCalibration, forKey: Keys.lock100NitsCalibration) }
+    }
+
+    var manageAutoBrightness: Bool {
+        didSet { UserDefaults.standard.set(manageAutoBrightness, forKey: Keys.manageAutoBrightness) }
+    }
+
+    var enableAmbientLightMonitoring: Bool {
+        didSet { UserDefaults.standard.set(enableAmbientLightMonitoring, forKey: Keys.enableAmbientLightMonitoring) }
+    }
+
+    var showHUDOnSwitch: Bool {
+        didSet { UserDefaults.standard.set(showHUDOnSwitch, forKey: Keys.showHUDOnSwitch) }
+    }
+
+    var monitorWebApps: Bool {
+        didSet { UserDefaults.standard.set(monitorWebApps, forKey: Keys.monitorWebApps) }
     }
     
     // MARK: - Timer Settings
@@ -215,7 +244,7 @@ final class AppSettings {
     
     // MARK: - Initialization
     
-    private init() {
+    init() {
         let defaults = UserDefaults.standard
         
         // Load monitored apps
@@ -250,6 +279,13 @@ final class AppSettings {
         self.showTimerInMenuBar = defaults.object(forKey: Keys.showTimerInMenuBar) as? Bool ?? true
         self.resetTimerOnReturn = defaults.object(forKey: Keys.resetTimerOnReturn) as? Bool ?? true
         self.isMonitoringEnabled = defaults.object(forKey: Keys.isMonitoringEnabled) as? Bool ?? true
+
+        // Display Engine defaults
+        self.lock100NitsCalibration     = defaults.object(forKey: Keys.lock100NitsCalibration) as? Bool ?? false
+        self.manageAutoBrightness       = defaults.object(forKey: Keys.manageAutoBrightness) as? Bool ?? true
+        self.enableAmbientLightMonitoring = defaults.object(forKey: Keys.enableAmbientLightMonitoring) as? Bool ?? false
+        self.showHUDOnSwitch            = defaults.object(forKey: Keys.showHUDOnSwitch) as? Bool ?? true
+        self.monitorWebApps             = defaults.object(forKey: Keys.monitorWebApps) as? Bool ?? true
         
         if let data = defaults.data(forKey: Keys.appLanguage),
            let savedLang = try? JSONDecoder().decode(AppLanguage.self, from: data) {
@@ -283,7 +319,6 @@ final class AppSettings {
         self.colorError    = Self.loadColor(forKey: Keys.colorError)    ?? .red
         
         // Apply language override to Bundle.main on startup
-        // This MUST be called last since it uses 'self.appLanguage'
         LocalizationService.applyLanguage(self.appLanguage)
     }
     
@@ -321,36 +356,33 @@ final class AppSettings {
         monitoredApps.removeAll { $0.id == app.id }
     }
     
-    func removeApps(at offsets: IndexSet) {
-        monitoredApps.remove(atOffsets: offsets)
+    func containsApp(_ app: MonitoredApp) -> Bool {
+        monitoredApps.contains { $0.bundleIdentifier == app.bundleIdentifier }
     }
     
-    /// Validate all apps and update paths if they've moved (e.g. version update)
     func validateAndRepairApps() -> [MonitoredApp] {
-        var invalidApps: [MonitoredApp] = []
-        
-        for i in monitoredApps.indices {
+        var invalid: [MonitoredApp] = []
+        for i in 0..<monitoredApps.count {
             if !monitoredApps[i].isValid {
                 if let newPath = monitoredApps[i].resolvedPath {
-                    // App found at new path — auto-repair
                     monitoredApps[i].path = newPath
                 } else {
-                    invalidApps.append(monitoredApps[i])
+                    invalid.append(monitoredApps[i])
                 }
             }
         }
-        
-        return invalidApps
+        return invalid
     }
     
     // MARK: - Reset
     
     func resetAppearance() {
-        colorNormal   = .blue
-        colorCreative = .orange
-        colorError    = .red
-        menuBarIconStyle = .sunMinFill
-        accentColorMode = .system
-        customAccentColor = .blue
+        self.colorNormal   = .blue
+        self.colorCreative = .orange
+        self.colorError    = .red
+        self.menuBarIconStyle = .sunMinFill
+        self.accentColorMode = .system
+        self.customAccentColor = .blue
+        self.appColorScheme = .system
     }
 }

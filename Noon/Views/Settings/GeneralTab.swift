@@ -292,7 +292,8 @@ struct GeneralTab: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Noon")
                         .font(.system(.title3, design: .rounded, weight: .bold))
-                    Text("Version 1.0.0")
+                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1.0"
+                    Text("Version \(version)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("Display Color Manager for Creative Professionals")

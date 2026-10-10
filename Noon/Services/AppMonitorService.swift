@@ -119,6 +119,10 @@ final class AppMonitorService {
         if displayService.isSuppressed {
             displayService.restoreFromCreativeMode(settings: settings)
         }
+        Task { @MainActor in
+            await DisplayManager.shared.restoreNormalInterventions()
+            AmbientLightMonitor.shared.stopMonitoring()
+        }
         
         currentState = .paused
         activeMonitoredApp = nil
@@ -156,8 +160,6 @@ final class AppMonitorService {
         // In immediate mode, check if the newly frontmost app is also monitored.
         // If so, we should stay in creative mode — no need to restore and re-disable.
         if settings.reactivationMode == .immediate {
-            // Use a tiny async dispatch to let the system finish the app switch.
-            // By then, the new frontmost app will be set.
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 
@@ -165,7 +167,6 @@ final class AppMonitorService {
                 if let newFrontApp = NSWorkspace.shared.frontmostApplication,
                    let newBundleID = newFrontApp.bundleIdentifier,
                    self.isMonitoredBundleID(newBundleID) {
-                    // Another monitored app took focus — stay in creative mode
                     return
                 }
                 
@@ -198,12 +199,33 @@ final class AppMonitorService {
     private func checkIfMonitored(bundleIdentifier: String?) {
         guard let bundleID = bundleIdentifier else { return }
         
+        // 1. Direct monitored desktop applications
         if let monitoredApp = settings.monitoredApps.first(where: { $0.bundleIdentifier == bundleID }) {
-            // A monitored app is now in the foreground
             activateCreativeMode(for: monitoredApp)
-        } else if displayService.isSuppressed {
-            // Non-monitored app came to front while suppressed
-            // Only handle focus lost if we are not already running a timer
+            return
+        }
+        
+        // 2. In-browser web creative applications (Figma, Canva, Photopea, Spline)
+        if settings.monitorWebApps,
+           WebAppWatcher.recognizedBrowserIdentifiers.contains(bundleID),
+           let frontApp = NSWorkspace.shared.frontmostApplication {
+            let inspection = WebAppWatcher.shared.inspectFrontmostBrowser(
+                pid: frontApp.processIdentifier,
+                bundleIdentifier: bundleID
+            )
+            if let tool = inspection.tool {
+                let virtualApp = MonitoredApp(
+                    name: tool.name,
+                    bundleIdentifier: bundleID,
+                    path: frontApp.bundleURL?.path ?? ""
+                )
+                activateCreativeMode(for: virtualApp)
+                return
+            }
+        }
+        
+        // 3. Fallback when non-monitored app comes to front while suppressed
+        if displayService.isSuppressed {
             if case .timerActive = currentState {
                 // Keep the timer running, do nothing
             } else {
@@ -219,9 +241,30 @@ final class AppMonitorService {
         activeMonitoredApp = app
         currentState = .creativeMode
         
-        // Only disable if not already suppressed
+        // Only disable True Tone / Night Shift if not already suppressed
         if !displayService.isSuppressed {
             displayService.disableForCreativeMode(settings: settings)
+        }
+
+        // Apply advanced display interventions (XDR preset, 100 nits calibration, DDC/CI)
+        let calibration: CalibrationTarget = settings.lock100NitsCalibration ? .appleRecommended : .sliderPercent(1.0)
+        let config = PerAppActionConfig(
+            manageAutoBrightness: settings.manageAutoBrightness,
+            calibrationTarget: calibration
+        )
+        Task { @MainActor in
+            await DisplayManager.shared.applyCreativeInterventions(for: config)
+
+            if settings.enableAmbientLightMonitoring {
+                AmbientLightMonitor.shared.startMonitoring()
+            }
+
+            if settings.showHUDOnSwitch {
+                HUDOverlayController.shared.showHUD(
+                    isCreativeMode: true,
+                    is100NitsLocked: settings.lock100NitsCalibration
+                )
+            }
         }
     }
     
@@ -233,8 +276,6 @@ final class AppMonitorService {
             handleReactivation()
             
         case .onQuit:
-            // Don't restore — wait for all monitored apps to quit
-            // State stays in .creativeMode
             break
             
         case .timer:
@@ -246,6 +287,18 @@ final class AppMonitorService {
         cancelReactivationTimer()
         displayService.restoreFromCreativeMode(settings: settings)
         activeMonitoredApp = nil
+        
+        // Restore display manager interventions
+        Task { @MainActor in
+            await DisplayManager.shared.restoreNormalInterventions()
+            AmbientLightMonitor.shared.stopMonitoring()
+
+            if settings.showHUDOnSwitch {
+                HUDOverlayController.shared.showHUD(
+                    isCreativeMode: false
+                )
+            }
+        }
         
         if settings.hasErrors {
             currentState = .error("Apps introuvables")

@@ -8,6 +8,8 @@
 
 import SwiftUI
 
+// MARK: - GlassCard
+
 struct GlassCard<Content: View>: View {
     let cornerRadius: CGFloat
     let padding: CGFloat
@@ -33,18 +35,49 @@ struct GlassCard<Content: View>: View {
     }
     
     var body: some View {
-        content()
-            .padding(padding)
-            .background(material)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(
-                        Color.white.opacity(borderOpacity),
-                        lineWidth: 0.5
-                    )
-            )
-            .shadow(color: .black.opacity(0.08), radius: shadowRadius, x: 0, y: 4)
+        if #available(macOS 15.0, *) {
+            content()
+                .padding(padding)
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(material)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: Color.white.opacity(borderOpacity * 1.6), location: 0.0),
+                                    .init(color: Color.white.opacity(borderOpacity * 0.4), location: 1.0)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.75
+                        )
+                        .blendMode(.overlay)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.04), lineWidth: 0.5)
+                )
+                .shadow(color: Color.black.opacity(0.07), radius: shadowRadius, x: 0, y: 3)
+                .materialActiveAppearance(.matchWindow)
+        } else {
+            // macOS 14 fallback: standard uniform stroke and material
+            content()
+                .padding(padding)
+                .background(material)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            Color.white.opacity(borderOpacity),
+                            lineWidth: 0.5
+                        )
+                )
+                .shadow(color: .black.opacity(0.08), radius: shadowRadius, x: 0, y: 4)
+        }
     }
 }
 
@@ -66,22 +99,65 @@ struct AccentGlassCard<Content: View>: View {
     }
     
     var body: some View {
-        content()
-            .padding(16)
-            .background(
-                ZStack {
-                    accentColor.opacity(0.08)
-                    Rectangle().fill(.ultraThinMaterial)
-                }
-            )
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(
-                        accentColor.opacity(0.2),
-                        lineWidth: 0.5
-                    )
-            )
+        if #available(macOS 15.0, *) {
+            content()
+                .padding(16)
+                .background(
+                    ZStack {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                        
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(accentColor.opacity(0.10))
+                            .blendMode(.color)
+                        
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [accentColor.opacity(0.06), Color.clear],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .blendMode(.plusLighter)
+                    }
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: accentColor.opacity(0.45), location: 0.0),
+                                    .init(color: accentColor.opacity(0.15), location: 1.0)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 0.75
+                        )
+                        .blendMode(.overlay)
+                )
+                .shadow(color: accentColor.opacity(0.12), radius: 8, x: 0, y: 3)
+                .materialActiveAppearance(.matchWindow)
+        } else {
+            // macOS 14 fallback: flat accent layer with ultraThinMaterial
+            content()
+                .padding(16)
+                .background(
+                    ZStack {
+                        accentColor.opacity(0.08)
+                        Rectangle().fill(.ultraThinMaterial)
+                    }
+                )
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            accentColor.opacity(0.2),
+                            lineWidth: 0.5
+                        )
+                )
+        }
     }
 }
 
