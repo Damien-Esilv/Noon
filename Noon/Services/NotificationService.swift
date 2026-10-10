@@ -30,8 +30,11 @@ final class NotificationService {
     
     func sendAppNotFoundNotification(app: MonitoredApp) {
         let content = UNMutableNotificationContent()
-        content.title = "Noon — Application introuvable"
-        content.body = "\"\(app.name)\" n'a pas été trouvée à son emplacement prévu. Vérifiez si l'app a été mise à jour ou déplacée."
+        content.title = NSLocalizedString("Noon — Application introuvable", comment: "")
+        content.body = String(
+            format: NSLocalizedString("\"%@\" n'a pas été trouvée à son emplacement prévu. Vérifiez si l'app a été mise à jour ou déplacée.", comment: ""),
+            app.name
+        )
         content.sound = .default
         content.categoryIdentifier = "APP_NOT_FOUND"
         content.userInfo = ["bundleIdentifier": app.bundleIdentifier, "appName": app.name]
@@ -53,7 +56,7 @@ final class NotificationService {
     
     func sendFrameworkErrorNotification(message: String) {
         let content = UNMutableNotificationContent()
-        content.title = "Noon — Erreur système"
+        content.title = NSLocalizedString("Noon — Erreur système", comment: "")
         content.body = message
         content.sound = .default
         content.categoryIdentifier = "FRAMEWORK_ERROR"
@@ -71,10 +74,12 @@ final class NotificationService {
     
     func sendCreativeModeNotification(enabled: Bool, appName: String) {
         let content = UNMutableNotificationContent()
-        content.title = enabled ? "Noon — Mode Créatif activé" : "Noon — Mode Créatif désactivé"
+        content.title = enabled 
+            ? NSLocalizedString("Noon — Mode Créatif activé", comment: "") 
+            : NSLocalizedString("Noon — Mode Créatif désactivé", comment: "")
         content.body = enabled
-            ? "True Tone et Night Shift ont été désactivés pour \(appName)."
-            : "True Tone et Night Shift ont été restaurés."
+            ? String(format: NSLocalizedString("True Tone et Night Shift ont été désactivés pour %@.", comment: ""), appName)
+            : NSLocalizedString("True Tone et Night Shift ont été restaurés.", comment: "")
         content.sound = .default
         content.categoryIdentifier = "CREATIVE_MODE"
         
@@ -91,8 +96,11 @@ final class NotificationService {
     
     func sendAppVersionMismatchNotification(app: MonitoredApp, newPath: String) {
         let content = UNMutableNotificationContent()
-        content.title = "Noon — App mise à jour détectée"
-        content.body = "\"\(app.name)\" a été trouvée à un nouvel emplacement. Le chemin a été mis à jour automatiquement."
+        content.title = NSLocalizedString("Noon — App mise à jour détectée", comment: "")
+        content.body = String(
+            format: NSLocalizedString("\"%@\" a été trouvée à un nouvel emplacement. Le chemin a été mis à jour automatiquement.", comment: ""),
+            app.name
+        )
         content.sound = .default
         content.categoryIdentifier = "APP_UPDATED"
         

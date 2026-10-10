@@ -482,65 +482,112 @@ struct V1_1_NewFeaturesTests {
 
     @Test("All Localizable strings contain complete translations across all 8 languages")
     func testAllStringsHaveCompleteTranslations() throws {
-        let xcstringsURL = Bundle.main.url(forResource: "Localizable", withExtension: "xcstrings")
-            ?? URL(fileURLWithPath: "Noon/Resources/Localizable.xcstrings")
+        let thisFileURL = URL(fileURLWithPath: #filePath)
+        let projectRoot = thisFileURL.deletingLastPathComponent().deletingLastPathComponent()
+        let xcstringsURL = projectRoot.appendingPathComponent("Noon/Resources/Localizable.xcstrings")
         
-        let fileManager = FileManager.default
-        let path = fileManager.fileExists(atPath: xcstringsURL.path) ? xcstringsURL.path : "Noon/Resources/Localizable.xcstrings"
+        #expect(FileManager.default.fileExists(atPath: xcstringsURL.path), "Localizable.xcstrings must exist at \(xcstringsURL.path)")
         
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        let data = try Data(contentsOf: xcstringsURL)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let strings = json["strings"] as? [String: [String: Any]] else {
-            return // Soft fail if outside bundle test environment
+            Issue.record("Failed to parse Localizable.xcstrings as JSON")
+            return
         }
 
         let supportedLangs = ["fr", "en", "it", "de", "es", "pt", "zh-Hans", "ar"]
+        var incompleteKeys: [String] = []
+
         for (key, dict) in strings {
             guard !key.isEmpty else { continue }
             let localizations = dict["localizations"] as? [String: [String: Any]] ?? [:]
             for lang in supportedLangs {
                 let unit = localizations[lang]?["stringUnit"] as? [String: Any]
                 let val = unit?["value"] as? String
-                #expect(val != nil && !val!.isEmpty)
+                if val == nil || val!.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    incompleteKeys.append("Key '\(key)' missing or empty translation for '\(lang)'")
+                }
             }
         }
+        
+        for item in incompleteKeys {
+            Issue.record(Comment(rawValue: item))
+        }
+        #expect(incompleteKeys.isEmpty)
     }
 
-    @Test("Verify no hardcoded strings in Swift UI views missing from Localizable.xcstrings")
+    private static func normalizeSwiftUIInterpolations(_ text: String) -> [String] {
+        var s = text
+        while let start = s.range(of: "\\(") {
+            var openParen = 1
+            var idx = start.upperBound
+            while idx < s.endIndex && openParen > 0 {
+                if s[idx] == "(" {
+                    openParen += 1
+                } else if s[idx] == ")" {
+                    openParen -= 1
+                }
+                idx = s.index(after: idx)
+            }
+            let inside = String(s[start.upperBound..<s.index(before: idx)])
+            let rep = ["Int", "count", "nominal", "drift"].contains { inside.contains($0) } ? "%lld" : "%@"
+            s.replaceSubrange(start.lowerBound..<idx, with: rep)
+        }
+        return [
+            s,
+            s.replacingOccurrences(of: "%", with: "%%"),
+            s.replacingOccurrences(of: "%%", with: "%"),
+            s.replacingOccurrences(of: "%lld%", with: "%lld%%")
+        ]
+    }
+
+        @Test("Verify no hardcoded strings in Swift UI views missing from Localizable.xcstrings")
     func testNoHardcodedUntranslatedStringsInSwiftViews() throws {
-        let xcstringsURL = Bundle.main.url(forResource: "Localizable", withExtension: "xcstrings")
-            ?? URL(fileURLWithPath: "Noon/Resources/Localizable.xcstrings")
+        let thisFileURL = URL(fileURLWithPath: #filePath)
+        let projectRoot = thisFileURL.deletingLastPathComponent().deletingLastPathComponent()
+        let xcstringsURL = projectRoot.appendingPathComponent("Noon/Resources/Localizable.xcstrings")
         
-        let path = FileManager.default.fileExists(atPath: xcstringsURL.path) ? xcstringsURL.path : "Noon/Resources/Localizable.xcstrings"
+        #expect(FileManager.default.fileExists(atPath: xcstringsURL.path), "Localizable.xcstrings must exist at \(xcstringsURL.path)")
         
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        let data = try Data(contentsOf: xcstringsURL)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let strings = json["strings"] as? [String: [String: Any]] else {
+            Issue.record("Failed to parse Localizable.xcstrings as JSON")
             return
         }
         
         let catalogKeys = Set(strings.keys)
         
-        // Allowed technical / format keys
+        // Allowed technical / brand keys
         let technicalKeys: Set<String> = [
             "XDR", "DDC/CI", "P3", "sRGB", "Rec. 709", "HDR", "SDR", "Pro Display XDR",
             "Apple XDR Display (P3-1600 nits)", "Apple Display (P3-500 nits)",
-            "Liquid Retina Display", "External Display", "Figma", "Canva", "Photopea", "Spline"
+            "Liquid Retina Display", "External Display", "Figma", "Canva", "Photopea", "Spline",
+            "Adobe Express", "Pixlr", "Vectorpea", "Adobe Photoshop", "DaVinci Resolve", "Missing App",
+            "100 NITS", "Noon"
         ]
         
-        let viewsURL = URL(fileURLWithPath: "Noon/Views")
+        let viewsURL = projectRoot.appendingPathComponent("Noon/Views")
+        #expect(FileManager.default.fileExists(atPath: viewsURL.path), "Noon/Views must exist at \(viewsURL.path)")
+        
         guard let enumerator = FileManager.default.enumerator(at: viewsURL, includingPropertiesForKeys: nil) else {
+            Issue.record("Unable to enumerate Noon/Views at \(viewsURL.path)")
             return
         }
         
-        let regex = try NSRegularExpression(pattern: #"(?:Text|Label|Button|Section)\\s*\\(\\s*"([^"\\\\]*(?:\\.[^"\\\\]*)*)""#)
+        let regex = try NSRegularExpression(pattern: #"(?:Text|Label|Button|Section|Picker)\s*\(\s*(?:label:\s*)?"((?:[^"\\]|\\.)*)""#)
         
         var missingKeys: [String] = []
         for case let fileURL as URL in enumerator where fileURL.pathExtension == "swift" {
             guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else { continue }
             let lines = content.components(separatedBy: .newlines)
-            for line in lines {
+            var insidePreview = false
+            for (idx, line) in lines.enumerated() {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.contains("#Preview") {
+                    insidePreview = true
+                }
+                if insidePreview { continue }
                 if trimmed.hasPrefix("//") || trimmed.hasPrefix("*") { continue }
                 
                 let matches = regex.matches(in: line, range: NSRange(line.startIndex..., in: line))
@@ -549,16 +596,25 @@ struct V1_1_NewFeaturesTests {
                         let text = String(line[strRange])
                         if text.count < 2 { continue }
                         if technicalKeys.contains(text) { continue }
-                        if text.allSatisfy({ $0.isNumber || $0.isPunctuation || $0.isWhitespace || $0 == "%" }) { continue }
+                        if text.allSatisfy({ $0.isNumber || $0.isPunctuation || $0.isWhitespace || $0 == "%" || $0 == "#" }) { continue }
                         
-                        if !catalogKeys.contains(text) {
-                            missingKeys.append("\\(fileURL.lastPathComponent): \\(text)")
+                        // Check exact match in catalog
+                        if catalogKeys.contains(text) { continue }
+                        
+                        let candidates = Self.normalizeSwiftUIInterpolations(text)
+                        let matchesCatalog = candidates.contains { catalogKeys.contains($0) }
+                        
+                        if !matchesCatalog {
+                            missingKeys.append("\(fileURL.lastPathComponent):\(idx + 1) -> \(text)")
                         }
                     }
                 }
             }
         }
         
+        for item in missingKeys {
+            Issue.record(Comment(rawValue: item))
+        }
         #expect(missingKeys.isEmpty)
     }
 

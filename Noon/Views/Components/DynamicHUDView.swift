@@ -44,8 +44,13 @@ public struct DynamicHUDView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(isCreativeMode ? "Mode Créatif Actif" : "Mode Standard")
-                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    if isCreativeMode {
+                        Text("Mode Créatif Actif")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    } else {
+                        Text("Mode Standard")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    }
 
                     if is100NitsLocked {
                         Text("100 NITS")

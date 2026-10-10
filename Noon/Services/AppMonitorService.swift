@@ -309,7 +309,7 @@ final class AppMonitorService {
         }
         
         if settings.hasErrors {
-            currentState = .error("Apps introuvables")
+            currentState = .error(NSLocalizedString("Apps introuvables", comment: ""))
         } else {
             currentState = .normal
         }
@@ -364,7 +364,7 @@ final class AppMonitorService {
         let invalidApps = settings.validateAndRepairApps()
         
         if !invalidApps.isEmpty {
-            currentState = .error("\(invalidApps.count) app(s) introuvable(s)")
+            currentState = .error(String(format: NSLocalizedString("%lld app(s) introuvable(s)", comment: ""), invalidApps.count))
             
             // Send notification for each invalid app
             if settings.showNotifications {

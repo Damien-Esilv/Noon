@@ -9,9 +9,16 @@
 import SwiftUI
 
 enum DisplaySubTab: String, CaseIterable, Identifiable {
-    case brightness = "Luminosité"
-    case calibration = "Calibrage"
+    case brightness = "brightness"
+    case calibration = "calibration"
     var id: String { rawValue }
+
+    var displayName: LocalizedStringKey {
+        switch self {
+        case .brightness: return "Luminosité"
+        case .calibration: return "Calibrage"
+        }
+    }
 }
 
 struct DisplaysTab: View {
@@ -22,7 +29,7 @@ struct DisplaysTab: View {
         VStack(spacing: 0) {
             Picker("", selection: $selectedSubTab) {
                 ForEach(DisplaySubTab.allCases) { tab in
-                    Text(tab.rawValue).tag(tab)
+                    Text(tab.displayName).tag(tab)
                 }
             }
             .pickerStyle(.segmented)

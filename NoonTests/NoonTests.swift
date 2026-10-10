@@ -159,7 +159,7 @@ struct OptionDisablingLogicTests {
         // Starting or resuming monitoring with an invalid app should trigger .error state
         monitorService.startMonitoring()
         if case .error(let msg) = monitorService.currentState {
-            #expect(msg.contains("introuvable"))
+            #expect(msg.contains("introuvable") || msg.contains("not found"))
         } else {
             Issue.record("Expected .error state when invalid app is monitored, got \(monitorService.currentState)")
         }

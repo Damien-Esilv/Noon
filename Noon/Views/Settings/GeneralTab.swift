@@ -105,7 +105,7 @@ struct GeneralTab: View {
         }
     }
     
-    private func featurePill(name: String, enabled: Bool, managed: Bool) -> some View {
+    private func featurePill(name: LocalizedStringKey, enabled: Bool, managed: Bool) -> some View {
         HStack(spacing: 4) {
             Circle()
                 .fill(managed ? (enabled ? .green : .red.opacity(0.7)) : .red.opacity(0.7))
@@ -385,13 +385,17 @@ struct GeneralTab: View {
     
     // MARK: - About
     
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }
+
     private var aboutSection: some View {
         GroupBox {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Noon")
                         .font(.system(.headline, design: .rounded, weight: .bold))
-                    Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
+                    Text("Version \(appVersion)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("Made by Sunazur")

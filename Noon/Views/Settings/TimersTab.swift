@@ -12,7 +12,7 @@ struct TimersTab: View {
     @Bindable var settings: AppSettings
     
     // Preset durations in seconds
-    private let presets: [(label: String, duration: TimeInterval)] = [
+    private let presets: [(label: LocalizedStringKey, duration: TimeInterval)] = [
         ("1 min", 60),
         ("2 min", 120),
         ("5 min", 300),
@@ -255,7 +255,8 @@ struct TimersTab: View {
                     timelineStep(
                         icon: "timer",
                         color: settings.effectiveAccentColor ?? .accentColor,
-                        label: "Minuteur\n\(formattedDuration)",
+                        label: "Minuteur",
+                        subtitle: formattedDuration,
                         isActive: true
                     )
                     
@@ -277,7 +278,7 @@ struct TimersTab: View {
         }
     }
     
-    private func timelineStep(icon: String, color: Color, label: String, isActive: Bool) -> some View {
+    private func timelineStep(icon: String, color: Color, label: LocalizedStringKey, subtitle: String? = nil, isActive: Bool) -> some View {
         VStack(spacing: 6) {
             ZStack {
                 Circle()
@@ -289,12 +290,19 @@ struct TimersTab: View {
                     .foregroundStyle(color)
             }
             
-            Text(label)
-                .font(.system(.caption2, design: .rounded))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 2) {
+                Text(label)
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(.secondary)
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
     }
@@ -305,8 +313,8 @@ struct TimersTab: View {
         let minutes = Int(settings.timerDuration) / 60
         let seconds = Int(settings.timerDuration) % 60
         if seconds == 0 {
-            return "\(minutes) min"
+            return String(format: NSLocalizedString("%lld min", comment: ""), minutes)
         }
-        return "\(minutes)m \(seconds)s"
+        return String(format: NSLocalizedString("%lldm %llds", comment: ""), minutes, seconds)
     }
 }

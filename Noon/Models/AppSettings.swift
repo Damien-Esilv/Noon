@@ -68,7 +68,7 @@ enum AccentColorMode: String, CaseIterable, Identifiable, Codable {
     
     var id: String { rawValue }
     
-    var displayName: String {
+    var displayName: LocalizedStringKey {
         switch self {
         case .system: return "Système"
         case .custom: return "Personnalisé"
@@ -83,7 +83,7 @@ enum AppColorScheme: String, CaseIterable, Identifiable, Codable {
     
     var id: String { rawValue }
     
-    var displayName: String {
+    var displayName: LocalizedStringKey {
         switch self {
         case .system: return "Système"
         case .light: return "Clair"
