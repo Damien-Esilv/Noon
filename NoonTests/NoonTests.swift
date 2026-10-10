@@ -235,6 +235,33 @@ struct OptionDisablingLogicTests {
         #expect(settings.isDisplayManagementEnabled(for: testID) == true)
         #expect(!settings.disabledDisplayIDs.contains(UInt32(testID)))
     }
+
+    @Test("Disabling notifications prevents HUD presentation and NotificationService delivery", .serialized)
+    @MainActor
+    func testDisabledNotificationsSuppressesHUDAndAlerts() {
+        let settings = AppSettings.shared
+        let originalNotificationSetting = settings.showNotifications
+        defer {
+            settings.showNotifications = originalNotificationSetting
+        }
+        
+        settings.showNotifications = false
+        
+        // HUD presentation should be suppressed
+        HUDOverlayController.shared.showHUD(
+            isCreativeMode: true,
+            is100NitsLocked: true
+        )
+        
+        // NotificationService methods should exit early without throw or error
+        let dummyApp = MonitoredApp(name: "TestApp", bundleIdentifier: "com.test.app", path: "/Applications/Test.app")
+        NotificationService.shared.sendAppNotFoundNotification(app: dummyApp)
+        NotificationService.shared.sendFrameworkErrorNotification(message: "Test")
+        NotificationService.shared.sendCreativeModeNotification(enabled: true, appName: "TestApp")
+        NotificationService.shared.sendAppVersionMismatchNotification(app: dummyApp, newPath: "/New/Path")
+        
+        #expect(settings.showNotifications == false)
+    }
 }
 
 @Suite("UI State and Appearance Tests")

@@ -279,8 +279,8 @@ final class AppMonitorService {
                 AmbientLightMonitor.shared.startMonitoring()
             }
 
-            // Only show HUD notification if something actually changed on the display
-            if settings.showHUDOnSwitch && willModifyDisplayState {
+            // Only show HUD notification if notifications are enabled and something actually changed on the display
+            if settings.showNotifications && settings.showHUDOnSwitch && willModifyDisplayState {
                 HUDOverlayController.shared.showHUD(
                     isCreativeMode: true,
                     is100NitsLocked: settings.lock100NitsCalibration
@@ -316,7 +316,7 @@ final class AppMonitorService {
             await DisplayManager.shared.restoreNormalInterventions()
             AmbientLightMonitor.shared.stopMonitoring()
 
-            if settings.showHUDOnSwitch && hadActualIntervention {
+            if settings.showNotifications && settings.showHUDOnSwitch && hadActualIntervention {
                 HUDOverlayController.shared.showHUD(
                     isCreativeMode: false
                 )

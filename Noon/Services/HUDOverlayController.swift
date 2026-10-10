@@ -26,6 +26,10 @@ public final class HUDOverlayController {
         driftPercentage: Double = 0.0,
         autoDismissDelay: TimeInterval = 2.5
     ) {
+        guard AppSettings.shared.showNotifications else {
+            dismiss()
+            return
+        }
         dismissTask?.cancel()
 
         let hudView = DynamicHUDView(

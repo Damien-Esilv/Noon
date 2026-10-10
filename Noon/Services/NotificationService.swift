@@ -29,6 +29,7 @@ final class NotificationService {
     // MARK: - App Not Found
     
     func sendAppNotFoundNotification(app: MonitoredApp) {
+        guard AppSettings.shared.showNotifications else { return }
         let content = UNMutableNotificationContent()
         content.title = NSLocalizedString("Noon — Application introuvable", comment: "")
         content.body = String(
@@ -55,6 +56,7 @@ final class NotificationService {
     // MARK: - Framework Error
     
     func sendFrameworkErrorNotification(message: String) {
+        guard AppSettings.shared.showNotifications else { return }
         let content = UNMutableNotificationContent()
         content.title = NSLocalizedString("Noon — Erreur système", comment: "")
         content.body = message
@@ -73,6 +75,7 @@ final class NotificationService {
     // MARK: - Creative Mode Toggle
     
     func sendCreativeModeNotification(enabled: Bool, appName: String) {
+        guard AppSettings.shared.showNotifications else { return }
         let content = UNMutableNotificationContent()
         content.title = enabled 
             ? NSLocalizedString("Noon — Mode Créatif activé", comment: "") 
@@ -95,6 +98,7 @@ final class NotificationService {
     // MARK: - App Version Mismatch
     
     func sendAppVersionMismatchNotification(app: MonitoredApp, newPath: String) {
+        guard AppSettings.shared.showNotifications else { return }
         let content = UNMutableNotificationContent()
         content.title = NSLocalizedString("Noon — App mise à jour détectée", comment: "")
         content.body = String(

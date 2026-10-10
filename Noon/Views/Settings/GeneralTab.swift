@@ -368,7 +368,15 @@ struct GeneralTab: View {
     private var notificationsSection: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 12) {
-                Toggle(isOn: $settings.showNotifications) {
+                Toggle(isOn: Binding(
+                    get: { settings.showNotifications },
+                    set: { enabled in
+                        settings.showNotifications = enabled
+                        if !enabled {
+                            HUDOverlayController.shared.dismiss()
+                        }
+                    }
+                )) {
                     HStack {
                         Label("Activer les notifications", systemImage: "bell.badge")
                             .foregroundStyle(.primary)
