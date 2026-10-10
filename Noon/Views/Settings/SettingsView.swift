@@ -51,7 +51,7 @@ struct SettingsView: View {
                 }
                 .tag(4)
         }
-        .frame(width: 540, height: 450)
+        .frame(minWidth: 600, idealWidth: 640, minHeight: 500, idealHeight: 540)
         .id("settings-view-\(settings.appLanguage.rawValue)")
         // Both are needed: .tint for SwiftUI components, .accentColor for native macOS TabView tabs
         .tint(settings.effectiveAccentColor ?? .accentColor)

@@ -48,6 +48,17 @@ struct MenuBarView: View {
         }
         .frame(width: 320)
         .padding(.vertical, 8)
+        .background(popupContainerBackground)
+    }
+
+    @ViewBuilder
+    private var popupContainerBackground: some View {
+        if settings.popupMaterialStyle == .solid {
+            Color(nsColor: .windowBackgroundColor)
+                .ignoresSafeArea()
+        } else {
+            Color.clear
+        }
     }
     
     // MARK: - Header

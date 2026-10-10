@@ -104,9 +104,34 @@ struct DisplaysTab: View {
                 Divider()
 
                 // MARK: - Calibration & Brightness Section
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 12) {
                     Text("Calibration & Luminance")
                         .font(.headline)
+
+                    Toggle(isOn: $settings.enablePresetBrightness) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Luminosité prédéfinie en mode créatif")
+                                .font(.body)
+                            Text("Réglez librement votre écran au quotidien. Dès qu'une application ou un site surveillé est actif, la luminosité s'ajuste automatiquement à ce niveau.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if settings.enablePresetBrightness {
+                        HStack(spacing: 12) {
+                            Image(systemName: "sun.min")
+                                .foregroundStyle(.secondary)
+                            Slider(value: $settings.presetBrightnessLevel, in: 0.1...1.0, step: 0.05)
+                            Image(systemName: "sun.max")
+                                .foregroundStyle(.secondary)
+                            Text("\(Int(settings.presetBrightnessLevel * 100))%")
+                                .font(.system(.subheadline, design: .monospaced, weight: .bold))
+                                .frame(width: 44, alignment: .trailing)
+                        }
+                        .padding(.leading, 24)
+                        .padding(.vertical, 2)
+                    }
 
                     Toggle(isOn: $settings.lock100NitsCalibration) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -117,6 +142,8 @@ struct DisplaysTab: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .disabled(settings.enablePresetBrightness)
+                    .opacity(settings.enablePresetBrightness ? 0.5 : 1.0)
 
                     Toggle(isOn: $settings.manageAutoBrightness) {
                         VStack(alignment: .leading, spacing: 2) {

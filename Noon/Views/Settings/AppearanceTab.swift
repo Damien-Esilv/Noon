@@ -23,6 +23,9 @@ struct AppearanceTab: View {
                 // MARK: - Icon Style
                 iconStyleSection
                 
+                // MARK: - Popup Background Style
+                popupStyleSection
+
                 // MARK: - Color Scheme
                 colorSchemeSection
                 
@@ -94,6 +97,28 @@ struct AppearanceTab: View {
         .buttonStyle(.plain)
     }
     
+    // MARK: - Popup Background Style
+    
+    private var popupStyleSection: some View {
+        GroupBox {
+            HStack {
+                Text("Style de la fenêtre")
+                Spacer()
+                Picker("", selection: $settings.popupMaterialStyle) {
+                    ForEach(PopupMaterialStyle.allCases) { style in
+                        Text(style.displayName).tag(style)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(minWidth: 210, maxWidth: 280)
+            }
+            .padding(4)
+        } label: {
+            Label("Menu de la barre d'état", systemImage: "macwindow")
+                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+        }
+    }
+    
     // MARK: - Color Scheme
     
     private var colorSchemeSection: some View {
@@ -107,7 +132,7 @@ struct AppearanceTab: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 200)
+                .frame(minWidth: 210, maxWidth: 280)
             }
             .padding(4)
         } label: {
@@ -131,7 +156,7 @@ struct AppearanceTab: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 160)
+                    .frame(minWidth: 210, maxWidth: 280)
                 }
                 
                 if settings.accentColorMode == .system {

@@ -51,6 +51,46 @@ enum AccentColorMode: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+
+// MARK: - Popup Background Style
+enum PopupMaterialStyle: String, CaseIterable, Identifiable, Codable {
+    case transparent = "transparent"
+    case solid = "solid"
+    
+    var id: String { rawValue }
+    
+    var displayName: LocalizedStringKey {
+        switch self {
+        case .transparent: return "Transparent"
+        case .solid: return "Solide"
+        }
+    }
+}
+
+// MARK: - Monitored Website
+public struct MonitoredWebsite: Identifiable, Codable, Equatable, Sendable {
+    public var id: UUID
+    public var name: String
+    public var domain: String
+    public var isEnabled: Bool
+    public var isPredefined: Bool
+
+    public init(id: UUID = UUID(), name: String, domain: String, isEnabled: Bool = true, isPredefined: Bool = false) {
+        self.id = id
+        self.name = name
+        self.domain = domain
+        self.isEnabled = isEnabled
+        self.isPredefined = isPredefined
+    }
+
+    public static let standardWebsites: [MonitoredWebsite] = [
+        MonitoredWebsite(name: "Figma", domain: "figma.com", isEnabled: true, isPredefined: true),
+        MonitoredWebsite(name: "Canva", domain: "canva.com", isEnabled: true, isPredefined: true),
+        MonitoredWebsite(name: "Photopea", domain: "photopea.com", isEnabled: true, isPredefined: true),
+        MonitoredWebsite(name: "Spline", domain: "spline.design", isEnabled: true, isPredefined: true)
+    ]
+}
+
 enum AppColorScheme: String, CaseIterable, Identifiable, Codable {
     case system = "system"
     case light = "light"
@@ -104,6 +144,10 @@ final class AppSettings {
         static let enableAmbientLightMonitoring = "noon_enableAmbientLightMonitoring"
         static let showHUDOnSwitch            = "noon_showHUDOnSwitch"
         static let monitorWebApps             = "noon_monitorWebApps"
+        static let popupMaterialStyle         = "noon_popupMaterialStyle"
+        static let monitoredWebsites          = "noon_monitoredWebsites"
+        static let enablePresetBrightness     = "noon_enablePresetBrightness"
+        static let presetBrightnessLevel      = "noon_presetBrightnessLevel" 
     }
     
     // MARK: - General Settings
@@ -177,6 +221,22 @@ final class AppSettings {
 
     var showHUDOnSwitch: Bool {
         didSet { UserDefaults.standard.set(showHUDOnSwitch, forKey: Keys.showHUDOnSwitch) }
+    }
+
+    var popupMaterialStyle: PopupMaterialStyle {
+        didSet { UserDefaults.standard.set(popupMaterialStyle.rawValue, forKey: Keys.popupMaterialStyle) }
+    }
+    
+    var monitoredWebsites: [MonitoredWebsite] {
+        didSet { save(monitoredWebsites, forKey: Keys.monitoredWebsites) }
+    }
+    
+    var enablePresetBrightness: Bool {
+        didSet { UserDefaults.standard.set(enablePresetBrightness, forKey: Keys.enablePresetBrightness) }
+    }
+    
+    var presetBrightnessLevel: Double {
+        didSet { UserDefaults.standard.set(presetBrightnessLevel, forKey: Keys.presetBrightnessLevel) }
     }
 
     var monitorWebApps: Bool {
@@ -286,6 +346,26 @@ final class AppSettings {
         self.enableAmbientLightMonitoring = defaults.object(forKey: Keys.enableAmbientLightMonitoring) as? Bool ?? false
         self.showHUDOnSwitch            = defaults.object(forKey: Keys.showHUDOnSwitch) as? Bool ?? true
         self.monitorWebApps             = defaults.object(forKey: Keys.monitorWebApps) as? Bool ?? true
+
+        // Popup style
+        if let styleStr = defaults.string(forKey: Keys.popupMaterialStyle),
+           let style = PopupMaterialStyle(rawValue: styleStr) {
+            self.popupMaterialStyle = style
+        } else {
+            self.popupMaterialStyle = .transparent
+        }
+        
+        // Monitored websites
+        if let data = defaults.data(forKey: Keys.monitoredWebsites),
+           let websites = try? JSONDecoder().decode([MonitoredWebsite].self, from: data) {
+            self.monitoredWebsites = websites
+        } else {
+            self.monitoredWebsites = MonitoredWebsite.standardWebsites
+        }
+        
+        // Preset Brightness in creative mode
+        self.enablePresetBrightness = defaults.object(forKey: Keys.enablePresetBrightness) as? Bool ?? false
+        self.presetBrightnessLevel = defaults.object(forKey: Keys.presetBrightnessLevel) as? Double ?? 0.60
         
         if let data = defaults.data(forKey: Keys.appLanguage),
            let savedLang = try? JSONDecoder().decode(AppLanguage.self, from: data) {
@@ -307,6 +387,7 @@ final class AppSettings {
             self.appColorScheme = savedScheme
         } else {
             self.appColorScheme = .system
+        self.popupMaterialStyle = .transparent
         }
         
         // Load timer duration (default 5 minutes)
@@ -376,6 +457,30 @@ final class AppSettings {
     
     // MARK: - Reset
     
+    func addWebsite(name: String, domain: String) {
+        let cleanedDomain = domain.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "https://", with: "")
+            .replacingOccurrences(of: "http://", with: "")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let newSite = MonitoredWebsite(
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            domain: cleanedDomain,
+            isEnabled: true,
+            isPredefined: false
+        )
+        monitoredWebsites.append(newSite)
+    }
+
+    func removeWebsite(id: UUID) {
+        monitoredWebsites.removeAll { $0.id == id }
+    }
+
+    func toggleWebsite(id: UUID) {
+        if let index = monitoredWebsites.firstIndex(where: { $0.id == id }) {
+            monitoredWebsites[index].isEnabled.toggle()
+        }
+    }
+
     func resetAppearance() {
         self.colorNormal   = .blue
         self.colorCreative = .orange
@@ -384,5 +489,6 @@ final class AppSettings {
         self.accentColorMode = .system
         self.customAccentColor = .blue
         self.appColorScheme = .system
+        self.popupMaterialStyle = .transparent
     }
 }

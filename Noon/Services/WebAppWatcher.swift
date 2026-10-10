@@ -147,6 +147,26 @@ public final class WebAppWatcher: WebAppInspectorProtocol, @unchecked Sendable {
     }
 
     public func matchTool(url: String?, title: String?) -> WebCreativeTool? {
+        // 1. Check enabled user-configured / predefined monitored websites
+        let activeWebsites = AppSettings.shared.monitoredWebsites.filter { $0.isEnabled }
+        for site in activeWebsites {
+            let matchedId = registeredTools.first {
+                $0.urlPattern.localizedCaseInsensitiveContains(site.domain) ||
+                site.domain.localizedCaseInsensitiveContains($0.urlPattern) ||
+                $0.name.localizedCaseInsensitiveCompare(site.name) == .orderedSame
+            }?.id ?? site.id.uuidString
+
+            if let url = url, !url.isEmpty, url.localizedCaseInsensitiveContains(site.domain) {
+                return WebCreativeTool(id: matchedId, name: site.name, urlPattern: site.domain, titlePattern: ".*\\b" + NSRegularExpression.escapedPattern(for: site.name) + "\\b.*")
+            }
+            if let title = title, !title.isEmpty {
+                if title.localizedCaseInsensitiveContains(site.name) || title.localizedCaseInsensitiveContains(site.domain) {
+                    return WebCreativeTool(id: matchedId, name: site.name, urlPattern: site.domain, titlePattern: ".*\\b" + NSRegularExpression.escapedPattern(for: site.name) + "\\b.*")
+                }
+            }
+        }
+
+        // 2. Fallback to registeredTools (defaults/injection)
         for tool in registeredTools {
             // Check URL pattern
             if let url = url, !url.isEmpty {

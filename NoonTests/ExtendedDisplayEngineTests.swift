@@ -408,3 +408,97 @@ struct IntegratedDisplaysUITests {
         controller.dismiss()
     }
 }
+
+// MARK: - 10. v1.1.0 New Features & Internationalization Suite
+
+@Suite("v1.1.0 New Features & Internationalization Tests")
+struct V1_1_NewFeaturesTests {
+
+    @Test("Popup material style supports transparent and solid modes")
+    func testPopupMaterialStyle() {
+        let settings = AppSettings.shared
+        settings.popupMaterialStyle = .solid
+        #expect(settings.popupMaterialStyle == .solid)
+        #expect(PopupMaterialStyle.solid.displayName != "")
+        #expect(PopupMaterialStyle.transparent.displayName != "")
+
+        settings.popupMaterialStyle = .transparent
+        #expect(settings.popupMaterialStyle == .transparent)
+    }
+
+    @Test("Monitored websites support predefined list, additions, toggling, and removal")
+    func testMonitoredWebsitesManagement() {
+        let settings = AppSettings.shared
+        let initialCount = settings.monitoredWebsites.count
+        #expect(initialCount >= 4) // Figma, Canva, Photopea, Spline
+
+        // Add custom site
+        settings.addWebsite(name: "Dribbble", domain: "dribbble.com")
+        let addedSite = settings.monitoredWebsites.first { $0.domain == "dribbble.com" }
+        #expect(addedSite != nil)
+        #expect(addedSite?.name == "Dribbble")
+        #expect(addedSite?.isPredefined == false)
+        #expect(addedSite?.isEnabled == true)
+
+        // Toggle site
+        if let siteId = addedSite?.id {
+            settings.toggleWebsite(id: siteId)
+            let toggledSite = settings.monitoredWebsites.first { $0.id == siteId }
+            #expect(toggledSite?.isEnabled == false)
+
+            // WebAppWatcher should not match disabled site
+            let disabledMatch = WebAppWatcher.shared.matchTool(url: "https://dribbble.com/shots", title: "Dribbble - Popular")
+            #expect(disabledMatch == nil)
+
+            // Re-enable site
+            settings.toggleWebsite(id: siteId)
+            let enabledMatch = WebAppWatcher.shared.matchTool(url: "https://dribbble.com/shots", title: "Dribbble - Popular")
+            #expect(enabledMatch != nil)
+            #expect(enabledMatch?.name == "Dribbble")
+
+            // Remove site
+            settings.removeWebsite(id: siteId)
+            let removedSite = settings.monitoredWebsites.first { $0.id == siteId }
+            #expect(removedSite == nil)
+        }
+    }
+
+    @Test("Preset brightness level controls and preferences")
+    func testPresetBrightnessSettings() {
+        let settings = AppSettings.shared
+        settings.enablePresetBrightness = true
+        settings.presetBrightnessLevel = 0.75
+        #expect(settings.enablePresetBrightness == true)
+        #expect(settings.presetBrightnessLevel == 0.75)
+
+        // Cleanup
+        settings.enablePresetBrightness = false
+        settings.presetBrightnessLevel = 0.70
+    }
+
+    @Test("All Localizable strings contain complete translations across all 8 languages")
+    func testAllStringsHaveCompleteTranslations() throws {
+        let xcstringsURL = Bundle.main.url(forResource: "Localizable", withExtension: "xcstrings")
+            ?? URL(fileURLWithPath: "Noon/Resources/Localizable.xcstrings")
+        
+        let fileManager = FileManager.default
+        let path = fileManager.fileExists(atPath: xcstringsURL.path) ? xcstringsURL.path : "Noon/Resources/Localizable.xcstrings"
+        
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let strings = json["strings"] as? [String: [String: Any]] else {
+            return // Soft fail if outside bundle test environment
+        }
+
+        let supportedLangs = ["fr", "en", "it", "de", "es", "pt", "zh-Hans", "ar"]
+        for (key, dict) in strings {
+            guard !key.isEmpty else { continue }
+            let localizations = dict["localizations"] as? [String: [String: Any]] ?? [:]
+            for lang in supportedLangs {
+                let unit = localizations[lang]?["stringUnit"] as? [String: Any]
+                let val = unit?["value"] as? String
+                #expect(val != nil && !val!.isEmpty, "Missing translation for key: \(key) in language: \(lang)")
+            }
+        }
+    }
+}

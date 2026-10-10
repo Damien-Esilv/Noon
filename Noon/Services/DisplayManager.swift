@@ -173,13 +173,17 @@ public final class DisplayManager {
                 }
 
                 // 4. Calibrated Luminance / Target Brightness
-                let calibration = config?.calibrationTarget ?? .appleRecommended
-                if let computedBrightness = BrightnessManager.computeCalibratedBrightness(
-                    isXDR: display.isXDR,
-                    activePreset: display.activeReferencePreset,
-                    target: calibration
-                ) {
-                    try await brightnessManager.setBrightness(computedBrightness, for: display.id)
+                if AppSettings.shared.enablePresetBrightness {
+                    try await brightnessManager.setBrightness(Float(AppSettings.shared.presetBrightnessLevel), for: display.id)
+                } else if AppSettings.shared.lock100NitsCalibration {
+                    let calibration = config?.calibrationTarget ?? .appleRecommended
+                    if let computedBrightness = BrightnessManager.computeCalibratedBrightness(
+                        isXDR: display.isXDR,
+                        activePreset: display.activeReferencePreset,
+                        target: calibration
+                    ) {
+                        try await brightnessManager.setBrightness(computedBrightness, for: display.id)
+                    }
                 }
 
                 // 5. External DDC/CI Hardware Commands

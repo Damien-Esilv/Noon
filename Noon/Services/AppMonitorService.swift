@@ -247,7 +247,14 @@ final class AppMonitorService {
         }
 
         // Apply advanced display interventions (XDR preset, 100 nits calibration, DDC/CI)
-        let calibration: CalibrationTarget = settings.lock100NitsCalibration ? .appleRecommended : .sliderPercent(1.0)
+        let calibration: CalibrationTarget
+        if settings.enablePresetBrightness {
+            calibration = .sliderPercent(Float(settings.presetBrightnessLevel))
+        } else if settings.lock100NitsCalibration {
+            calibration = .appleRecommended
+        } else {
+            calibration = .sliderPercent(1.0)
+        }
         let config = PerAppActionConfig(
             manageAutoBrightness: settings.manageAutoBrightness,
             calibrationTarget: calibration
