@@ -27,33 +27,33 @@ struct SettingsView: View {
             }
             .tag(0)
 
+            MonitoredAppsTab(settings: settings)
+                .tabItem {
+                    Label("Apps Surveillées", systemImage: "app.badge.checkmark")
+                }
+                .tag(1)
+
             BrightnessTab(settings: settings)
                 .tabItem {
                     Label("Luminosité", systemImage: "sun.max")
                 }
-                .tag(1)
+                .tag(2)
 
             CalibrationTab(settings: settings)
                 .tabItem {
                     Label("Calibrage", systemImage: "paintpalette")
                 }
-                .tag(2)
-            
-            MonitoredAppsTab(settings: settings)
-                .tabItem {
-                    Label("Apps Surveillées", systemImage: "app.badge.checkmark")
-                }
                 .tag(3)
-            
-            AppearanceTab(settings: settings)
-                .tabItem {
-                    Label("Apparence", systemImage: "paintbrush")
-                }
-                .tag(4)
-            
+
             TimersTab(settings: settings)
                 .tabItem {
                     Label("Minuteurs", systemImage: "timer")
+                }
+                .tag(4)
+
+            AppearanceTab(settings: settings)
+                .tabItem {
+                    Label("Apparence", systemImage: "paintbrush")
                 }
                 .tag(5)
         }

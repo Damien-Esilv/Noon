@@ -156,7 +156,7 @@ struct AppearanceTab: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .frame(minWidth: 210, maxWidth: 280)
+                    .fixedSize(horizontal: true, vertical: false)
                 }
                 
                 if settings.accentColorMode == .system {
