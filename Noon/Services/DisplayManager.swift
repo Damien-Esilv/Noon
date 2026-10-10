@@ -75,7 +75,7 @@ public final class DisplayManager {
                 }
             }
 
-            let isEnabled = managementOverrides[id] ?? true
+            let isEnabled = managementOverrides[id] ?? AppSettings.shared.isDisplayManagementEnabled(for: id)
 
             let display = DisplayInfo(
                 id: id,
@@ -130,13 +130,56 @@ public final class DisplayManager {
         if let index = connectedDisplays.firstIndex(where: { $0.id == displayID }) {
             connectedDisplays[index].isManagementEnabled = enabled
         }
+        AppSettings.shared.setDisplayManagement(enabled, for: displayID)
+        
+        if isCreativeModeActive && !enabled {
+            Task {
+                await restoreInterventions(for: displayID)
+            }
+        }
     }
 
     public func isManagementEnabled(for displayID: CGDirectDisplayID) -> Bool {
         if let overrideVal = managementOverrides[displayID] {
             return overrideVal
         }
-        return connectedDisplays.first(where: { $0.id == displayID })?.isManagementEnabled ?? true
+        return AppSettings.shared.isDisplayManagementEnabled(for: displayID)
+    }
+
+    public var hasAnyManagedDisplay: Bool {
+        if connectedDisplays.isEmpty {
+            return isManagementEnabled(for: CGMainDisplayID())
+        }
+        return connectedDisplays.contains { isManagementEnabled(for: $0.id) }
+    }
+
+    public var isTrueToneDisplayManaged: Bool {
+        if connectedDisplays.isEmpty {
+            return isManagementEnabled(for: CGMainDisplayID())
+        }
+        let trueToneDisplays = connectedDisplays.filter { $0.isBuiltin || $0.isAppleDisplay }
+        if trueToneDisplays.isEmpty {
+            return isManagementEnabled(for: CGMainDisplayID())
+        }
+        return trueToneDisplays.contains { isManagementEnabled(for: $0.id) }
+    }
+
+    public var isNightShiftManaged: Bool {
+        hasAnyManagedDisplay
+    }
+
+    public func restoreInterventions(for displayID: CGDirectDisplayID) async {
+        guard let display = connectedDisplays.first(where: { $0.id == displayID }) else { return }
+        do {
+            if display.isXDR {
+                try await applePresetController.restoreOriginalPreset(for: display.id)
+            }
+            try await colorSyncController.restoreOriginalProfile(for: display.id)
+            try await brightnessManager.restoreOriginalAutoBrightness(for: display.id)
+            try await brightnessManager.restoreOriginalBrightness(for: display.id)
+        } catch {
+            self.lastError = error.localizedDescription
+        }
     }
 
     // MARK: - Creative Mode Orchestration

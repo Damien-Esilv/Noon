@@ -298,7 +298,7 @@ struct MenuBarView: View {
     
     @ViewBuilder
     private var trueToneStatusBadge: some View {
-        let isManaged = settings.manageTrueTone
+        let isManaged = settings.manageTrueTone && DisplayManager.shared.isTrueToneDisplayManaged
         let isEnabled = displayService.isTrueToneEnabled
         
         if #available(macOS 15.0, *) {
@@ -338,7 +338,7 @@ struct MenuBarView: View {
     
     @ViewBuilder
     private var nightShiftStatusBadge: some View {
-        let isManaged = settings.manageNightShift
+        let isManaged = settings.manageNightShift && DisplayManager.shared.isNightShiftManaged
         let isEnabled = displayService.isNightShiftEnabled
         
         if #available(macOS 15.0, *) {

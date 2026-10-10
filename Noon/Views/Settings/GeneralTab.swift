@@ -209,6 +209,11 @@ struct GeneralTab: View {
                                     get: { display.isManagementEnabled },
                                     set: { enabled in
                                         displayManager.setManagementEnabled(enabled, for: display.id)
+                                        if !enabled {
+                                            displayService.restoreUnmanagedFeaturesIfNeeded(settings: settings)
+                                        } else if displayService.isSuppressed {
+                                            displayService.disableForCreativeMode(settings: settings)
+                                        }
                                     }
                                 ))
                                 .labelsHidden()

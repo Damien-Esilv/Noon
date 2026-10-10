@@ -172,6 +172,7 @@ final class AppSettings {
         static let enableCreativeColorProfile = "noon_enableCreativeColorProfile"
         static let creativeColorProfileName   = "noon_creativeColorProfileName"
         static let displayCalibrationProfiles = "noon_displayCalibrationProfiles"
+        static let disabledDisplayIDs         = "noon_disabledDisplayIDs"
     }
     
     // MARK: - General Settings
@@ -259,6 +260,10 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(creativeColorProfileName, forKey: Keys.creativeColorProfileName) }
     }
 
+    var disabledDisplayIDs: [UInt32] {
+        didSet { UserDefaults.standard.set(disabledDisplayIDs, forKey: Keys.disabledDisplayIDs) }
+    }
+    
     var displayCalibrationProfiles: [String: String] {
         didSet { save(displayCalibrationProfiles, forKey: Keys.displayCalibrationProfiles) }
     }
@@ -343,6 +348,23 @@ final class AppSettings {
         creativeColorProfileName = profileName
     }
 
+    func isDisplayManagementEnabled(for displayID: CGDirectDisplayID) -> Bool {
+        !disabledDisplayIDs.contains(UInt32(displayID))
+    }
+
+    func setDisplayManagement(_ enabled: Bool, for displayID: CGDirectDisplayID) {
+        let id32 = UInt32(displayID)
+        var current = disabledDisplayIDs
+        if enabled {
+            current.removeAll { $0 == id32 }
+        } else {
+            if !current.contains(id32) {
+                current.append(id32)
+            }
+        }
+        disabledDisplayIDs = current
+    }
+
     // MARK: - Initialization
     
     init() {
@@ -417,6 +439,7 @@ final class AppSettings {
         } else {
             self.displayCalibrationProfiles = [:]
         }
+        self.disabledDisplayIDs = defaults.object(forKey: Keys.disabledDisplayIDs) as? [UInt32] ?? []
         
         if let data = defaults.data(forKey: Keys.appLanguage),
            let savedLang = try? JSONDecoder().decode(AppLanguage.self, from: data) {

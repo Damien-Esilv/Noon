@@ -96,10 +96,17 @@ final class DisplayService {
     
     // MARK: - Disable (Creative Mode)
     
-    /// Saves current state and disables True Tone / Night Shift based on settings
+    /// Saves current state and disables True Tone / Night Shift based on settings and display management
     func disableForCreativeMode(settings: AppSettings) {
         guard let wrapper = wrapper, isFrameworkLoaded else {
             lastError = "Cannot disable: framework not loaded."
+            return
+        }
+        
+        let shouldManageTrueTone = settings.manageTrueTone && DisplayManager.shared.isTrueToneDisplayManaged
+        let shouldManageNightShift = settings.manageNightShift && DisplayManager.shared.isNightShiftManaged
+        
+        guard shouldManageTrueTone || shouldManageNightShift else {
             return
         }
         
@@ -111,7 +118,7 @@ final class DisplayService {
         var error: NSError?
         
         // Disable Night Shift if managed
-        if settings.manageNightShift && isNightShiftEnabled {
+        if shouldManageNightShift && isNightShiftEnabled {
             let success = wrapper.setNightShiftEnabled(false, error: &error)
             if !success {
                 lastError = "Failed to disable Night Shift: \(error?.localizedDescription ?? "unknown")"
@@ -119,7 +126,7 @@ final class DisplayService {
         }
         
         // Disable True Tone if managed and supported
-        if settings.manageTrueTone && isTrueToneSupported && isTrueToneEnabled {
+        if shouldManageTrueTone && isTrueToneSupported && isTrueToneEnabled {
             error = nil
             let success = wrapper.setTrueToneEnabled(false, error: &error)
             if !success {
@@ -128,10 +135,10 @@ final class DisplayService {
         }
         
         isSuppressed = true
-        if settings.manageNightShift {
+        if shouldManageNightShift {
             isNightShiftEnabled = false
         }
-        if settings.manageTrueTone && isTrueToneSupported {
+        if shouldManageTrueTone && isTrueToneSupported {
             isTrueToneEnabled = false
         }
         
@@ -155,7 +162,7 @@ final class DisplayService {
         var error: NSError?
         
         // Restore Night Shift
-        if settings.manageNightShift, let savedState = savedNightShiftState, savedState {
+        if let savedState = savedNightShiftState, savedState {
             let success = wrapper.setNightShiftEnabled(true, error: &error)
             if !success {
                 lastError = "Failed to restore Night Shift: \(error?.localizedDescription ?? "unknown")"
@@ -163,7 +170,7 @@ final class DisplayService {
         }
         
         // Restore True Tone
-        if settings.manageTrueTone && isTrueToneSupported {
+        if isTrueToneSupported {
             if let savedState = savedTrueToneState, savedState {
                 error = nil
                 let success = wrapper.setTrueToneEnabled(true, error: &error)
@@ -180,6 +187,32 @@ final class DisplayService {
         // Play sound if enabled
         if settings.soundOnToggle {
             NSSound(named: NSSound.Name("Pop"))?.play()
+        }
+        
+        refreshStatus()
+    }
+    
+    /// Restores display features if they are no longer managed (e.g. user disabled screen in settings)
+    func restoreUnmanagedFeaturesIfNeeded(settings: AppSettings) {
+        guard isSuppressed, let wrapper = wrapper, isFrameworkLoaded else { return }
+        
+        let shouldManageTrueTone = settings.manageTrueTone && DisplayManager.shared.isTrueToneDisplayManaged
+        let shouldManageNightShift = settings.manageNightShift && DisplayManager.shared.isNightShiftManaged
+        
+        var error: NSError?
+        
+        if !shouldManageTrueTone, let savedTT = savedTrueToneState, savedTT {
+            _ = wrapper.setTrueToneEnabled(true, error: &error)
+            savedTrueToneState = nil
+        }
+        
+        if !shouldManageNightShift, let savedNS = savedNightShiftState, savedNS {
+            _ = wrapper.setNightShiftEnabled(true, error: &error)
+            savedNightShiftState = nil
+        }
+        
+        if savedNightShiftState == nil && savedTrueToneState == nil {
+            isSuppressed = false
         }
         
         refreshStatus()

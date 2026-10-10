@@ -37,6 +37,8 @@ public final class HUDOverlayController {
         )
 
         let hostingView = NSHostingView(rootView: hudView)
+        hostingView.wantsLayer = true
+        hostingView.layer?.backgroundColor = NSColor.clear.cgColor
         hostingView.layoutSubtreeIfNeeded()
         let fittingSize = hostingView.fittingSize
 

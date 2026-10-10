@@ -83,14 +83,19 @@ public struct DynamicHUDView: View {
 
             Spacer(minLength: 4)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(isCreativeMode ? Color.accentColor.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.18), radius: 10, x: 0, y: 4)
         .frame(minWidth: 260)
+        .background {
+            Capsule()
+                .fill(.ultraThinMaterial)
+        }
+        .overlay {
+            Capsule()
+                .strokeBorder(isCreativeMode ? Color.accentColor.opacity(0.35) : Color.white.opacity(0.15), lineWidth: 1)
+        }
+        .clipShape(Capsule())
+        .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 4)
+        .padding(14)
     }
 }

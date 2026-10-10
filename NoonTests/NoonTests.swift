@@ -168,6 +168,55 @@ struct OptionDisablingLogicTests {
         settings.removeApp(invalidApp)
         settings.monitoredApps = []
     }
+
+    @Test("Disabling display management prevents True Tone and Night Shift modification")
+    @MainActor
+    func testDisplayManagementDisabledPreventsTrueToneAndNightShiftModification() async throws {
+        let settings = AppSettings()
+        settings.manageTrueTone = true
+        settings.manageNightShift = true
+        
+        let displayManager = DisplayManager.shared
+        let mainID = CGMainDisplayID()
+        
+        // Disable all displays in manager
+        for d in displayManager.connectedDisplays {
+            displayManager.setManagementEnabled(false, for: d.id)
+        }
+        displayManager.setManagementEnabled(false, for: mainID)
+        
+        let displayService = DisplayService()
+        let initialTT = displayService.isTrueToneEnabled
+        let initialNS = displayService.isNightShiftEnabled
+        
+        displayService.disableForCreativeMode(settings: settings)
+        
+        // Suppression must NOT happen when display is unmanaged
+        #expect(displayService.isSuppressed == false)
+        #expect(displayService.isTrueToneEnabled == initialTT)
+        #expect(displayService.isNightShiftEnabled == initialNS)
+        
+        // Re-enable displays for clean state
+        for d in displayManager.connectedDisplays {
+            displayManager.setManagementEnabled(true, for: d.id)
+        }
+        displayManager.setManagementEnabled(true, for: mainID)
+    }
+
+    @Test("Disabled display IDs persist in AppSettings")
+    @MainActor
+    func testDisabledDisplayPersistence() {
+        let settings = AppSettings()
+        let testID: CGDirectDisplayID = 888877
+        
+        settings.setDisplayManagement(false, for: testID)
+        #expect(settings.isDisplayManagementEnabled(for: testID) == false)
+        #expect(settings.disabledDisplayIDs.contains(UInt32(testID)))
+        
+        settings.setDisplayManagement(true, for: testID)
+        #expect(settings.isDisplayManagementEnabled(for: testID) == true)
+        #expect(!settings.disabledDisplayIDs.contains(UInt32(testID)))
+    }
 }
 
 @Suite("UI State and Appearance Tests")
