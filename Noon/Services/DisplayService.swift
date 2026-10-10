@@ -21,11 +21,16 @@ final class DisplayService {
     private(set) var lastError: String?
     
     /// Stores the user's original settings before Noon disabled them
-    private var savedNightShiftState: Bool?
-    private var savedTrueToneState: Bool?
+    private(set) var savedNightShiftState: Bool?
+    private(set) var savedTrueToneState: Bool?
     
     /// Whether display features are currently suppressed by Noon
     private(set) var isSuppressed: Bool = false
+
+    /// Whether any display feature was actively suppressed (i.e. was actually enabled before Noon suppressed it)
+    var hasActiveSuppression: Bool {
+        isSuppressed && ((savedNightShiftState == true) || (savedTrueToneState == true))
+    }
     
     private let wrapper: CoreBrightnessWrapper? = CoreBrightnessWrapper.shared()
     

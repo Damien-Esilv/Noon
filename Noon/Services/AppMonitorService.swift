@@ -242,6 +242,18 @@ final class AppMonitorService {
         activeMonitoredApp = app
         currentState = .creativeMode
         
+        let displayManager = DisplayManager.shared
+        guard displayManager.hasAnyManagedDisplay else {
+            // Screen management is disabled: do not touch display or show HUD
+            return
+        }
+        
+        let isTrueToneActive = displayService.isTrueToneSupported && displayService.isTrueToneEnabled && settings.manageTrueTone && displayManager.isTrueToneDisplayManaged
+        let isNightShiftActive = displayService.isNightShiftEnabled && settings.manageNightShift && displayManager.isNightShiftManaged
+        let isBrightnessInterventionActive = settings.enablePresetBrightness || settings.lock100NitsCalibration
+        let isProfileInterventionActive = settings.enableCreativeColorProfile
+        let willModifyDisplayState = isTrueToneActive || isNightShiftActive || isBrightnessInterventionActive || isProfileInterventionActive
+
         // Only disable True Tone / Night Shift if not already suppressed
         if !displayService.isSuppressed {
             displayService.disableForCreativeMode(settings: settings)
@@ -261,13 +273,14 @@ final class AppMonitorService {
             calibrationTarget: calibration
         )
         Task { @MainActor in
-            await DisplayManager.shared.applyCreativeInterventions(for: config)
+            await displayManager.applyCreativeInterventions(for: config)
 
             if settings.enableAmbientLightMonitoring {
                 AmbientLightMonitor.shared.startMonitoring()
             }
 
-            if settings.showHUDOnSwitch {
+            // Only show HUD notification if something actually changed on the display
+            if settings.showHUDOnSwitch && willModifyDisplayState {
                 HUDOverlayController.shared.showHUD(
                     isCreativeMode: true,
                     is100NitsLocked: settings.lock100NitsCalibration
@@ -293,6 +306,8 @@ final class AppMonitorService {
     
     private func handleReactivation() {
         cancelReactivationTimer()
+        let hadActualIntervention = displayService.hasActiveSuppression || (DisplayManager.shared.isCreativeModeActive && DisplayManager.shared.hasAnyManagedDisplay)
+        
         displayService.restoreFromCreativeMode(settings: settings)
         activeMonitoredApp = nil
         
@@ -301,7 +316,7 @@ final class AppMonitorService {
             await DisplayManager.shared.restoreNormalInterventions()
             AmbientLightMonitor.shared.stopMonitoring()
 
-            if settings.showHUDOnSwitch {
+            if settings.showHUDOnSwitch && hadActualIntervention {
                 HUDOverlayController.shared.showHUD(
                     isCreativeMode: false
                 )

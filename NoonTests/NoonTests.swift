@@ -13,10 +13,16 @@ import SwiftUI
 @Suite("Noon Option-Disabling Logic & Settings Tests")
 struct OptionDisablingLogicTests {
     
-    @Test("Creative mode disables True Tone when manageTrueTone is enabled")
+    @Test("Creative mode disables True Tone when manageTrueTone is enabled", .serialized)
     @MainActor
     func testTrueToneDisablingWhenManaged() async throws {
         let settings = AppSettings()
+        settings.disabledDisplayIDs = []
+        AppSettings.shared.disabledDisplayIDs = []
+        for d in DisplayManager.shared.connectedDisplays {
+            DisplayManager.shared.setManagementEnabled(true, for: d.id)
+        }
+        DisplayManager.shared.setManagementEnabled(true, for: CGMainDisplayID())
         settings.manageTrueTone = true
         settings.manageNightShift = false
         
@@ -62,10 +68,16 @@ struct OptionDisablingLogicTests {
         #expect(displayService.isTrueToneEnabled == initialTrueToneState)
     }
     
-    @Test("Creative mode disables Night Shift when manageNightShift is enabled")
+    @Test("Creative mode disables Night Shift when manageNightShift is enabled", .serialized)
     @MainActor
     func testNightShiftDisablingWhenManaged() async throws {
         let settings = AppSettings()
+        settings.disabledDisplayIDs = []
+        AppSettings.shared.disabledDisplayIDs = []
+        for d in DisplayManager.shared.connectedDisplays {
+            DisplayManager.shared.setManagementEnabled(true, for: d.id)
+        }
+        DisplayManager.shared.setManagementEnabled(true, for: CGMainDisplayID())
         settings.manageTrueTone = false
         settings.manageNightShift = true
         
@@ -169,15 +181,25 @@ struct OptionDisablingLogicTests {
         settings.monitoredApps = []
     }
 
-    @Test("Disabling display management prevents True Tone and Night Shift modification")
+    @Test("Disabling display management prevents True Tone and Night Shift modification", .serialized)
     @MainActor
     func testDisplayManagementDisabledPreventsTrueToneAndNightShiftModification() async throws {
         let settings = AppSettings()
+        settings.disabledDisplayIDs = []
         settings.manageTrueTone = true
         settings.manageNightShift = true
         
         let displayManager = DisplayManager.shared
         let mainID = CGMainDisplayID()
+        
+        defer {
+            for d in displayManager.connectedDisplays {
+                displayManager.setManagementEnabled(true, for: d.id)
+            }
+            displayManager.setManagementEnabled(true, for: mainID)
+            settings.disabledDisplayIDs = []
+            AppSettings.shared.disabledDisplayIDs = []
+        }
         
         // Disable all displays in manager
         for d in displayManager.connectedDisplays {
@@ -195,12 +217,6 @@ struct OptionDisablingLogicTests {
         #expect(displayService.isSuppressed == false)
         #expect(displayService.isTrueToneEnabled == initialTT)
         #expect(displayService.isNightShiftEnabled == initialNS)
-        
-        // Re-enable displays for clean state
-        for d in displayManager.connectedDisplays {
-            displayManager.setManagementEnabled(true, for: d.id)
-        }
-        displayManager.setManagementEnabled(true, for: mainID)
     }
 
     @Test("Disabled display IDs persist in AppSettings")
@@ -208,7 +224,9 @@ struct OptionDisablingLogicTests {
     func testDisabledDisplayPersistence() {
         let settings = AppSettings()
         let testID: CGDirectDisplayID = 888877
-        
+        defer {
+            settings.setDisplayManagement(true, for: testID)
+        }
         settings.setDisplayManagement(false, for: testID)
         #expect(settings.isDisplayManagementEnabled(for: testID) == false)
         #expect(settings.disabledDisplayIDs.contains(UInt32(testID)))

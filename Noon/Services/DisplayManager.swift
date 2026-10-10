@@ -187,6 +187,10 @@ public final class DisplayManager {
     public func applyCreativeInterventions(
         for config: PerAppActionConfig? = nil
     ) async {
+        guard hasAnyManagedDisplay else {
+            isCreativeModeActive = false
+            return
+        }
         isCreativeModeActive = true
         lastError = nil
 
