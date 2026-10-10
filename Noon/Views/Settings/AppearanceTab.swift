@@ -110,7 +110,7 @@ struct AppearanceTab: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(minWidth: 210, maxWidth: 280)
+                .fixedSize(horizontal: true, vertical: false)
             }
             .padding(4)
         } label: {
@@ -132,7 +132,7 @@ struct AppearanceTab: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(minWidth: 210, maxWidth: 280)
+                .fixedSize(horizontal: true, vertical: false)
             }
             .padding(4)
         } label: {

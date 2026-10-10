@@ -256,6 +256,25 @@ NSString * const CBWrapperErrorDomain = @"com.noon.CoreBrightnessWrapper";
     }
 }
 
+// MARK: - Notifications
+
+- (void)registerStatusChangeHandler:(void (^)(void))handler {
+    if (self.blueLightClient && [self.blueLightClient respondsToSelector:@selector(setStatusNotificationBlock:)]) {
+        @try {
+            [(CBBlueLightClient *)self.blueLightClient setStatusNotificationBlock:handler];
+        } @catch (NSException *e) {
+            NSLog(@"[Noon] Exception registering Night Shift notification block: %@", e.reason);
+        }
+    }
+    if (self.trueToneClient && [self.trueToneClient respondsToSelector:@selector(setStatusNotificationBlock:)]) {
+        @try {
+            [(CBTrueToneClient *)self.trueToneClient setStatusNotificationBlock:handler];
+        } @catch (NSException *e) {
+            NSLog(@"[Noon] Exception registering True Tone notification block: %@", e.reason);
+        }
+    }
+}
+
 // MARK: - Lifecycle
 
 - (BOOL)reloadFramework {

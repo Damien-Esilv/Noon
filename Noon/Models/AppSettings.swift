@@ -54,15 +54,17 @@ enum AccentColorMode: String, CaseIterable, Identifiable, Codable {
 
 // MARK: - Popup Background Style
 enum PopupMaterialStyle: String, CaseIterable, Identifiable, Codable {
-    case transparent = "transparent"
+    case semiTransparent = "semiTransparent"
     case solid = "solid"
+    case transparent = "transparent"
     
     var id: String { rawValue }
     
     var displayName: LocalizedStringKey {
         switch self {
-        case .transparent: return "Transparent"
-        case .solid: return "Solide"
+        case .semiTransparent: return "Semi-transparent"
+        case .solid:           return "Solide"
+        case .transparent:     return "Transparent"
         }
     }
 }
@@ -147,7 +149,9 @@ final class AppSettings {
         static let popupMaterialStyle         = "noon_popupMaterialStyle"
         static let monitoredWebsites          = "noon_monitoredWebsites"
         static let enablePresetBrightness     = "noon_enablePresetBrightness"
-        static let presetBrightnessLevel      = "noon_presetBrightnessLevel" 
+        static let presetBrightnessLevel      = "noon_presetBrightnessLevel"
+        static let enableCreativeColorProfile = "noon_enableCreativeColorProfile"
+        static let creativeColorProfileName   = "noon_creativeColorProfileName" 
     }
     
     // MARK: - General Settings
@@ -192,17 +196,7 @@ final class AppSettings {
     }
     
     var selectedLocale: Locale {
-        if appLanguage == .system {
-            // Check if current system language matches one of our supported
-            let sysCode = Locale.current.language.languageCode?.identifier ?? "en"
-            let supported = AppLanguage.allCases.map { $0.rawValue }
-            if supported.contains(sysCode) {
-                return Locale.current
-            }
-            // Fallback to English if system UI isn't supported
-            return Locale(identifier: "en")
-        }
-        return Locale(identifier: appLanguage.rawValue)
+        Locale(identifier: LocalizationService.currentResolvedLanguageCode)
     }
 
     // MARK: - Display Engine & Calibration Settings
@@ -237,6 +231,14 @@ final class AppSettings {
     
     var presetBrightnessLevel: Double {
         didSet { UserDefaults.standard.set(presetBrightnessLevel, forKey: Keys.presetBrightnessLevel) }
+    }
+    
+    var enableCreativeColorProfile: Bool {
+        didSet { UserDefaults.standard.set(enableCreativeColorProfile, forKey: Keys.enableCreativeColorProfile) }
+    }
+    
+    var creativeColorProfileName: String {
+        didSet { UserDefaults.standard.set(creativeColorProfileName, forKey: Keys.creativeColorProfileName) }
     }
 
     var monitorWebApps: Bool {
@@ -352,7 +354,7 @@ final class AppSettings {
            let style = PopupMaterialStyle(rawValue: styleStr) {
             self.popupMaterialStyle = style
         } else {
-            self.popupMaterialStyle = .transparent
+            self.popupMaterialStyle = .semiTransparent
         }
         
         // Monitored websites
@@ -366,6 +368,8 @@ final class AppSettings {
         // Preset Brightness in creative mode
         self.enablePresetBrightness = defaults.object(forKey: Keys.enablePresetBrightness) as? Bool ?? false
         self.presetBrightnessLevel = defaults.object(forKey: Keys.presetBrightnessLevel) as? Double ?? 0.60
+        self.enableCreativeColorProfile = defaults.object(forKey: Keys.enableCreativeColorProfile) as? Bool ?? false
+        self.creativeColorProfileName = defaults.string(forKey: Keys.creativeColorProfileName) ?? "Display P3" 
         
         if let data = defaults.data(forKey: Keys.appLanguage),
            let savedLang = try? JSONDecoder().decode(AppLanguage.self, from: data) {
@@ -387,7 +391,6 @@ final class AppSettings {
             self.appColorScheme = savedScheme
         } else {
             self.appColorScheme = .system
-        self.popupMaterialStyle = .transparent
         }
         
         // Load timer duration (default 5 minutes)

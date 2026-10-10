@@ -13,6 +13,7 @@ struct MenuBarView: View {
     let monitorService: AppMonitorService
     let displayService: DisplayService
     let settings: AppSettings
+    @State private var displayManager = DisplayManager.shared
     
     @Environment(\.dismiss) private var dismiss
     
@@ -34,8 +35,18 @@ struct MenuBarView: View {
             // MARK: - Display Controls
             displayControlsSection
             
+            Divider()
+                .padding(.horizontal, 16)
+                .opacity(0.5)
+            
+            // MARK: - Connected Displays Section
+            connectedDisplaysSection
+            
             // MARK: - Running Apps
             if !monitorService.runningMonitoredApps.isEmpty {
+                Divider()
+                    .padding(.horizontal, 16)
+                    .opacity(0.5)
                 runningAppsSection
             }
             
@@ -49,14 +60,28 @@ struct MenuBarView: View {
         .frame(width: 320)
         .padding(.vertical, 8)
         .background(popupContainerBackground)
+        .onAppear {
+            displayService.refreshStatus()
+            displayManager.refreshConnectedDisplays()
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                displayService.refreshStatus()
+            }
+        }
     }
 
     @ViewBuilder
     private var popupContainerBackground: some View {
-        if settings.popupMaterialStyle == .solid {
+        switch settings.popupMaterialStyle {
+        case .solid:
             Color(nsColor: .windowBackgroundColor)
                 .ignoresSafeArea()
-        } else {
+        case .semiTransparent:
+            VisualEffectBlur(material: .popover, blendingMode: .behindWindow)
+                .ignoresSafeArea()
+        case .transparent:
             Color.clear
         }
     }
@@ -330,6 +355,96 @@ struct MenuBarView: View {
         }
     }
     
+
+    // MARK: - Connected Displays Section
+    
+    private var connectedDisplaysSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Écrans Connectés")
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            
+            let displays = displayManager.connectedDisplays.isEmpty
+                ? [DisplayInfo(id: CGMainDisplayID(), name: "Écran Retina", isBuiltin: true, isXDR: false, isAppleDisplay: true, isManagementEnabled: true)]
+                : displayManager.connectedDisplays
+            
+            VStack(spacing: 6) {
+                ForEach(displays) { display in
+                    HStack(spacing: 8) {
+                        Image(systemName: display.isBuiltin ? "laptopcomputer" : "display")
+                            .font(.system(size: 13))
+                            .foregroundStyle(display.isManagementEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
+                            .frame(width: 18)
+                        
+                        Text(display.name)
+                            .font(.system(.subheadline, design: .rounded))
+                            .lineLimit(1)
+                        
+                        if display.isXDR {
+                            Text("XDR")
+                                .font(.system(size: 8, weight: .bold, design: .rounded))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.purple.opacity(0.2))
+                                .foregroundColor(.purple)
+                                .clipShape(Capsule())
+                        }
+                        
+                        Spacer()
+                        
+                        displayStatusBadge(for: display)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+    }
+    
+    @ViewBuilder
+    private func displayStatusBadge(for display: DisplayInfo) -> some View {
+        let isManaged = display.isManagementEnabled
+        let hasError = display.hasError || (displayService.lastError != nil)
+        
+        let dotColor: Color = hasError ? .orange : (isManaged ? .green : .red.opacity(0.8))
+        let labelText: LocalizedStringKey = hasError ? "Erreur" : (isManaged ? "Surveillé" : "Non géré")
+        
+        if #available(macOS 15.0, *) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: dotColor.opacity(0.5), radius: 2)
+                
+                Text(labelText)
+                    .font(.system(.caption2, design: .rounded, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                    Capsule()
+                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
+                        .blendMode(.overlay)
+                )
+            )
+        } else {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 6, height: 6)
+                
+                Text(labelText)
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     // MARK: - Running Apps Section
     
     private var runningAppsSection: some View {

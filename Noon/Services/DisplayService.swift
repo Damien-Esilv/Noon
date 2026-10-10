@@ -36,6 +36,12 @@ final class DisplayService {
     init() {
         refreshStatus()
         startPolling()
+        wrapper?.registerStatusChangeHandler { [weak self] in
+            DispatchQueue.main.async {
+                guard let self = self, !self.isSuppressed else { return }
+                self.refreshStatus()
+            }
+        }
     }
     
     deinit {
@@ -43,14 +49,15 @@ final class DisplayService {
     }
     
     private func startPolling() {
-        // Poll every 3 seconds to keep UI synchronized with external changes
-        pollingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+        // Poll every 1.5 seconds in .common mode so UI keeps synchronized even while menu bar popup is open
+        let timer = Timer(timeInterval: 1.5, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            // Only refresh if not actively suppressing to avoid reading false negative states
             if !self.isSuppressed {
                 self.refreshStatus()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.pollingTimer = timer
     }
     
     // MARK: - Status Refresh
@@ -121,13 +128,17 @@ final class DisplayService {
         }
         
         isSuppressed = true
+        if settings.manageNightShift {
+            isNightShiftEnabled = false
+        }
+        if settings.manageTrueTone && isTrueToneSupported {
+            isTrueToneEnabled = false
+        }
         
         // Play sound if enabled
         if settings.soundOnToggle {
             NSSound(named: NSSound.Name("Pop"))?.play()
         }
-        
-        refreshStatus()
     }
     
     // MARK: - Restore (Normal Mode)

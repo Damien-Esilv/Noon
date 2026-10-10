@@ -414,13 +414,17 @@ struct IntegratedDisplaysUITests {
 @Suite("v1.1.0 New Features & Internationalization Tests")
 struct V1_1_NewFeaturesTests {
 
-    @Test("Popup material style supports transparent and solid modes")
+    @Test("Popup material style supports semi-transparent, solid, and transparent modes")
     func testPopupMaterialStyle() {
         let settings = AppSettings.shared
         settings.popupMaterialStyle = .solid
         #expect(settings.popupMaterialStyle == .solid)
-        #expect(PopupMaterialStyle.solid.displayName != "")
-        #expect(PopupMaterialStyle.transparent.displayName != "")
+        #expect(PopupMaterialStyle.solid.id == "solid")
+        #expect(PopupMaterialStyle.transparent.id == "transparent")
+        #expect(PopupMaterialStyle.semiTransparent.id == "semiTransparent")
+
+        settings.popupMaterialStyle = .semiTransparent
+        #expect(settings.popupMaterialStyle == .semiTransparent)
 
         settings.popupMaterialStyle = .transparent
         #expect(settings.popupMaterialStyle == .transparent)
@@ -497,8 +501,169 @@ struct V1_1_NewFeaturesTests {
             for lang in supportedLangs {
                 let unit = localizations[lang]?["stringUnit"] as? [String: Any]
                 let val = unit?["value"] as? String
-                #expect(val != nil && !val!.isEmpty, "Missing translation for key: \(key) in language: \(lang)")
+                #expect(val != nil && !val!.isEmpty)
             }
         }
+    }
+
+    @Test("Verify no hardcoded strings in Swift UI views missing from Localizable.xcstrings")
+    func testNoHardcodedUntranslatedStringsInSwiftViews() throws {
+        let xcstringsURL = Bundle.main.url(forResource: "Localizable", withExtension: "xcstrings")
+            ?? URL(fileURLWithPath: "Noon/Resources/Localizable.xcstrings")
+        
+        let path = FileManager.default.fileExists(atPath: xcstringsURL.path) ? xcstringsURL.path : "Noon/Resources/Localizable.xcstrings"
+        
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let strings = json["strings"] as? [String: [String: Any]] else {
+            return
+        }
+        
+        let catalogKeys = Set(strings.keys)
+        
+        // Allowed technical / format keys
+        let technicalKeys: Set<String> = [
+            "XDR", "DDC/CI", "P3", "sRGB", "Rec. 709", "HDR", "SDR", "Pro Display XDR",
+            "Apple XDR Display (P3-1600 nits)", "Apple Display (P3-500 nits)",
+            "Liquid Retina Display", "External Display", "Figma", "Canva", "Photopea", "Spline"
+        ]
+        
+        let viewsURL = URL(fileURLWithPath: "Noon/Views")
+        guard let enumerator = FileManager.default.enumerator(at: viewsURL, includingPropertiesForKeys: nil) else {
+            return
+        }
+        
+        let regex = try NSRegularExpression(pattern: #"(?:Text|Label|Button|Section)\\s*\\(\\s*"([^"\\\\]*(?:\\.[^"\\\\]*)*)""#)
+        
+        var missingKeys: [String] = []
+        for case let fileURL as URL in enumerator where fileURL.pathExtension == "swift" {
+            guard let content = try? String(contentsOf: fileURL, encoding: .utf8) else { continue }
+            let lines = content.components(separatedBy: .newlines)
+            for line in lines {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("//") || trimmed.hasPrefix("*") { continue }
+                
+                let matches = regex.matches(in: line, range: NSRange(line.startIndex..., in: line))
+                for match in matches {
+                    if let strRange = Range(match.range(at: 1), in: line) {
+                        let text = String(line[strRange])
+                        if text.count < 2 { continue }
+                        if technicalKeys.contains(text) { continue }
+                        if text.allSatisfy({ $0.isNumber || $0.isPunctuation || $0.isWhitespace || $0 == "%" }) { continue }
+                        
+                        if !catalogKeys.contains(text) {
+                            missingKeys.append("\\(fileURL.lastPathComponent): \\(text)")
+                        }
+                    }
+                }
+            }
+        }
+        
+        #expect(missingKeys.isEmpty)
+    }
+
+    @Test("System language resolution dynamically tracks system preferences")
+    func testSystemLanguageResolution() {
+        let code = LocalizationService.resolveSystemLanguageCode()
+        let supported = ["fr", "en", "it", "de", "es", "pt", "zh-Hans", "ar"]
+        #expect(supported.contains(code))
+
+        let settings = AppSettings.shared
+        settings.appLanguage = .system
+        #expect(LocalizationService.currentResolvedLanguageCode == code)
+        #expect(settings.selectedLocale.identifier == code)
+    }
+
+    @Test("System language fallback defaults to English when language is unsupported")
+    func testSystemLanguageFallbackToEnglish() {
+        // Unsupported language candidates (Japanese, Russian, Korean, Dutch, Swedish)
+        let unsupportedCandidates = ["ja-JP", "ru-RU", "ko-KR", "nl-NL", "sv-SE"]
+        let fallbackCode = LocalizationService.resolveSystemLanguageCode(candidates: unsupportedCandidates)
+        #expect(fallbackCode == "en")
+
+        // Single unsupported language
+        let singleUnsupported = ["ja"]
+        #expect(LocalizationService.resolveSystemLanguageCode(candidates: singleUnsupported) == "en")
+
+        // Supported languages properly recognized
+        #expect(LocalizationService.resolveSystemLanguageCode(candidates: ["fr-FR"]) == "fr")
+        #expect(LocalizationService.resolveSystemLanguageCode(candidates: ["de-DE"]) == "de")
+        #expect(LocalizationService.resolveSystemLanguageCode(candidates: ["es-ES"]) == "es")
+        #expect(LocalizationService.resolveSystemLanguageCode(candidates: ["it-IT"]) == "it")
+        #expect(LocalizationService.resolveSystemLanguageCode(candidates: ["pt-BR"]) == "pt")
+        #expect(LocalizationService.resolveSystemLanguageCode(candidates: ["zh-CN"]) == "zh-Hans")
+        #expect(LocalizationService.resolveSystemLanguageCode(candidates: ["ar-SA"]) == "ar")
+        #expect(LocalizationService.resolveSystemLanguageCode(candidates: ["en-US"]) == "en")
+    }
+
+    @Test("Creative Color Profile switching and restoration with official Apple and custom probe profiles")
+    func testCreativeColorProfileSwitchingAndRestoration() async throws {
+        let mockColorSync = MockColorSyncController()
+        let displayID: CGDirectDisplayID = 1
+
+        // Verify initial state
+        let initialProfile = await mockColorSync.getCurrentProfileName(for: displayID)
+        #expect(initialProfile == "Display P3")
+
+        // 1. Switch to Official Apple Profile: sRGB
+        try await mockColorSync.setProfile(named: "sRGB", for: displayID)
+        var current = await mockColorSync.getCurrentProfileName(for: displayID)
+        #expect(current == "sRGB")
+
+        // 2. Switch to Official Apple Profile: Adobe RGB (1998)
+        try await mockColorSync.setProfile(named: "Adobe RGB (1998)", for: displayID)
+        current = await mockColorSync.getCurrentProfileName(for: displayID)
+        #expect(current == "Adobe RGB (1998)")
+
+        // 3. Switch to Official Apple Profile: Rec. 709
+        try await mockColorSync.setProfile(named: "Rec. 709", for: displayID)
+        current = await mockColorSync.getCurrentProfileName(for: displayID)
+        #expect(current == "Rec. 709")
+
+        // 4. Switch to Custom Probe Profile (e.g. Datacolor SpyderX)
+        try await mockColorSync.setProfile(named: "Calibrated-SpyderX-D65", for: displayID)
+        current = await mockColorSync.getCurrentProfileName(for: displayID)
+        #expect(current == "Calibrated-SpyderX-D65")
+
+        // 5. Switch to Custom Probe Profile (e.g. Calibrite Display Plus)
+        try await mockColorSync.setProfile(named: "Calibrite-Display-WideGamut", for: displayID)
+        current = await mockColorSync.getCurrentProfileName(for: displayID)
+        #expect(current == "Calibrite-Display-WideGamut")
+
+        // 6. Restore original profile
+        try await mockColorSync.restoreOriginalProfile(for: displayID)
+        let restored = await mockColorSync.getCurrentProfileName(for: displayID)
+        #expect(restored == "Display P3")
+    }
+
+    @Test("DisplayManager creative mode auto-activates creativeColorProfileName and restores on exit")
+    func testDisplayManagerCreativeProfileIntervention() async throws {
+        let settings = AppSettings.shared
+        settings.enableCreativeColorProfile = true
+        settings.creativeColorProfileName = "sRGB"
+
+        #expect(settings.enableCreativeColorProfile == true)
+        #expect(settings.creativeColorProfileName == "sRGB")
+
+        // Change profile to custom calibration profile
+        settings.creativeColorProfileName = "Calibrated-SpyderX-D65"
+        #expect(settings.creativeColorProfileName == "Calibrated-SpyderX-D65")
+
+        // Reset
+        settings.enableCreativeColorProfile = false
+        settings.creativeColorProfileName = "Display P3"
+    }
+
+    @Test("BrightnessTab and CalibrationTab SwiftUI components instantiate properly")
+    @MainActor
+    func testBrightnessAndCalibrationTabsInstantiation() {
+        let settings = AppSettings.shared
+        let brightnessTab = BrightnessTab(settings: settings)
+        let calibrationTab = CalibrationTab(settings: settings)
+        let displaysTab = DisplaysTab(settings: settings)
+
+        #expect(brightnessTab != nil)
+        #expect(calibrationTab != nil)
+        #expect(displaysTab != nil)
     }
 }

@@ -443,7 +443,7 @@ struct MonitoredAppsTab: View {
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(.secondary)
             
-            Text("Ajoutez des applications créatives pour que Noon\ndésactive automatiquement True Tone et Night Shift.")
+            Text("Ajoutez des applications créatives pour que Noon désactive automatiquement True Tone et Night Shift.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)

@@ -93,6 +93,7 @@ public struct DisplayInfo: Identifiable, Codable, Equatable, Sendable {
     public var supportsAppleReferencePresets: Bool
     public var supportsDDC: Bool
     public var isManagementEnabled: Bool
+    public var hasError: Bool
     public var currentBrightness: Float
     public var activeReferencePreset: AppleReferencePreset?
     public var activeColorProfileName: String?
@@ -107,6 +108,7 @@ public struct DisplayInfo: Identifiable, Codable, Equatable, Sendable {
         supportsAppleReferencePresets: Bool = false,
         supportsDDC: Bool = false,
         isManagementEnabled: Bool = true,
+        hasError: Bool = false,
         currentBrightness: Float = 0.5,
         activeReferencePreset: AppleReferencePreset? = nil,
         activeColorProfileName: String? = nil
@@ -120,6 +122,7 @@ public struct DisplayInfo: Identifiable, Codable, Equatable, Sendable {
         self.supportsAppleReferencePresets = supportsAppleReferencePresets
         self.supportsDDC = supportsDDC
         self.isManagementEnabled = isManagementEnabled
+        self.hasError = hasError
         self.currentBrightness = currentBrightness
         self.activeReferencePreset = activeReferencePreset
         self.activeColorProfileName = activeColorProfileName

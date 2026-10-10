@@ -87,7 +87,7 @@ struct GeneralTab: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.red)
                             .font(.title3)
-                        Text("Framework\nnon chargé")
+                        Text("Framework non chargé")
                             .font(.caption2)
                             .foregroundStyle(.red)
                             .multilineTextAlignment(.center)

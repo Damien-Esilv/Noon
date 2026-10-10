@@ -51,6 +51,11 @@ typedef NS_ENUM(NSInteger, CBWrapperErrorCode) {
 /// Enable or disable True Tone
 - (BOOL)setTrueToneEnabled:(BOOL)enabled error:(NSError * _Nullable * _Nullable)error NS_SWIFT_NOTHROW NS_SWIFT_NAME(setTrueToneEnabled(_:error:));
 
+// MARK: - Notifications
+
+/// Register a callback block invoked when Night Shift or True Tone status changes
+- (void)registerStatusChangeHandler:(void (^)(void))handler;
+
 // MARK: - Lifecycle
 
 /// Attempt to reload the CoreBrightness framework (e.g. after system update)

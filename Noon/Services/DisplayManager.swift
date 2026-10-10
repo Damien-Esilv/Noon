@@ -162,7 +162,8 @@ public final class DisplayManager {
                 }
 
                 // 2. ColorSync Profile Switch
-                if let targetProfile = config?.targetColorProfileName {
+                let targetProfile = config?.targetColorProfileName ?? (AppSettings.shared.enableCreativeColorProfile ? AppSettings.shared.creativeColorProfileName : nil)
+                if let targetProfile = targetProfile, !targetProfile.isEmpty {
                     try await colorSyncController.setProfile(named: targetProfile, for: display.id)
                 }
 

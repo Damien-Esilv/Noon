@@ -24,12 +24,18 @@ public protocol ColorSyncControllerProtocol: Sendable {
 public actor ColorSyncController: ColorSyncControllerProtocol {
     public static let shared = ColorSyncController()
 
-    /// Standard ICC profile search paths
-    private let systemProfileDirs = [
-        "/System/Library/ColorSync/Profiles",
-        "/Library/ColorSync/Profiles",
-        "/Library/ColorSync/Profiles/Displays"
-    ]
+    /// Standard & User custom ICC profile search paths (including external probes & calibration tools)
+    private var profileSearchDirs: [String] {
+        let home = NSHomeDirectory()
+        return [
+            "\(home)/Library/ColorSync/Profiles",
+            "\(home)/Library/ColorSync/Profiles/Displays",
+            "/Library/ColorSync/Profiles",
+            "/Library/ColorSync/Profiles/Displays",
+            "/System/Library/ColorSync/Profiles",
+            "/System/Library/ColorSync/Profiles/Displays"
+        ]
+    }
 
     /// Mapping of Display ID to original profile URL before creative mode switch
     private var originalProfiles: [CGDirectDisplayID: CFURL] = [:]
@@ -42,7 +48,7 @@ public actor ColorSyncController: ColorSyncControllerProtocol {
         var profileNames: [String] = ["sRGB", "Display P3", "Adobe RGB (1998)", "Rec. 709", "Rec. 2020"]
         let fileManager = FileManager.default
 
-        for dir in systemProfileDirs {
+        for dir in profileSearchDirs {
             guard let contents = try? fileManager.contentsOfDirectory(atPath: dir) else { continue }
             for file in contents where file.hasSuffix(".icc") || file.hasSuffix(".icm") {
                 let name = (file as NSString).deletingPathExtension
@@ -63,7 +69,7 @@ public actor ColorSyncController: ColorSyncControllerProtocol {
             profileName
         ]
 
-        for dir in systemProfileDirs {
+        for dir in profileSearchDirs {
             for candidate in searchCandidates {
                 let fullPath = (dir as NSString).appendingPathComponent(candidate)
                 if fileManager.fileExists(atPath: fullPath) {
@@ -185,7 +191,7 @@ public actor ColorSyncController: ColorSyncControllerProtocol {
 public actor MockColorSyncController: ColorSyncControllerProtocol {
     private var activeProfiles: [CGDirectDisplayID: String] = [:]
     private var originalProfiles: [CGDirectDisplayID: String] = [:]
-    public var availableProfiles: [String] = ["sRGB", "Display P3", "Adobe RGB (1998)", "Rec. 709"]
+    public var availableProfiles: [String] = ["sRGB", "Display P3", "Adobe RGB (1998)", "Rec. 709", "Calibrated-SpyderX-D65", "Calibrite-Display-WideGamut"]
 
     public init() {}
 

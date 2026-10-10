@@ -27,32 +27,38 @@ struct SettingsView: View {
             }
             .tag(0)
 
-            DisplaysTab(settings: settings)
+            BrightnessTab(settings: settings)
                 .tabItem {
-                    Label("Écrans", systemImage: "display.2")
+                    Label("Luminosité", systemImage: "sun.max")
                 }
                 .tag(1)
+
+            CalibrationTab(settings: settings)
+                .tabItem {
+                    Label("Calibrage", systemImage: "paintpalette")
+                }
+                .tag(2)
             
             MonitoredAppsTab(settings: settings)
                 .tabItem {
                     Label("Apps Surveillées", systemImage: "app.badge.checkmark")
                 }
-                .tag(2)
+                .tag(3)
             
             AppearanceTab(settings: settings)
                 .tabItem {
                     Label("Apparence", systemImage: "paintbrush")
                 }
-                .tag(3)
+                .tag(4)
             
             TimersTab(settings: settings)
                 .tabItem {
                     Label("Minuteurs", systemImage: "timer")
                 }
-                .tag(4)
+                .tag(5)
         }
-        .frame(minWidth: 600, idealWidth: 640, minHeight: 500, idealHeight: 540)
-        .id("settings-view-\(settings.appLanguage.rawValue)")
+        .frame(width: 560, height: 480)
+        .id("settings-view-\(settings.appLanguage.rawValue)-\(LocalizationService.currentResolvedLanguageCode)")
         // Both are needed: .tint for SwiftUI components, .accentColor for native macOS TabView tabs
         .tint(settings.effectiveAccentColor ?? .accentColor)
         .accentColor(settings.effectiveAccentColor)
