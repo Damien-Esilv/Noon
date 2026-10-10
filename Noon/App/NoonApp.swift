@@ -33,7 +33,7 @@ struct NoonApp: App {
                     displayService: displayService,
                     settings: settings
                 )
-                .id("menubar-\(settings.appLanguage.rawValue)")
+                .id("menubar-\(settings.appLanguage.rawValue)-\(settings.appColorScheme.rawValue)")
                 .tint(settings.effectiveAccentColor)
                 .preferredColorScheme(settings.appColorScheme == .system ? nil : (settings.appColorScheme == .light ? .light : .dark))
                 .onOpenURL { url in
@@ -67,7 +67,7 @@ struct NoonApp: App {
                     monitorService: monitor,
                     settings: settings
                 )
-                .id("settings-\(settings.appLanguage.rawValue)")
+                .id("settings-\(settings.appLanguage.rawValue)-\(settings.appColorScheme.rawValue)")
                 .environment(\.locale, settings.selectedLocale)
                 .tint(settings.effectiveAccentColor)
                 .preferredColorScheme(settings.appColorScheme == .system ? nil : (settings.appColorScheme == .light ? .light : .dark))

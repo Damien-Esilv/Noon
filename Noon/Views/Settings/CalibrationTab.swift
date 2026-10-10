@@ -41,45 +41,102 @@ struct CalibrationTab: View {
                     }
                 }
 
-                // MARK: - Target Calibration Profile Selector
+                // MARK: - Per-Display Target Calibration Profile Selector
                 if settings.enableCreativeColorProfile {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Profil d'étalonnage cible")
                             .font(.headline)
 
-                        GlassCard {
-                            VStack(alignment: .leading, spacing: 14) {
-                                HStack {
-                                    Image(systemName: "paintpalette.fill")
-                                        .font(.title2)
-                                        .foregroundStyle(settings.effectiveAccentColor ?? .accentColor)
+                        if displayManager.connectedDisplays.isEmpty {
+                            GlassCard {
+                                VStack(alignment: .leading, spacing: 14) {
+                                    HStack {
+                                        Image(systemName: "paintpalette.fill")
+                                            .font(.title2)
+                                            .foregroundStyle(settings.effectiveAccentColor ?? .accentColor)
 
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Profil d'étalonnage sélectionné")
-                                            .font(.subheadline)
-                                            .fontWeight(.medium)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Profil d'étalonnage sélectionné")
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
 
-                                        Picker("", selection: $settings.creativeColorProfileName) {
-                                            if !customCalibrationProfiles.isEmpty {
-                                                Section("Profils personnalisés (Sondes & Outils externes)") {
-                                                    ForEach(customCalibrationProfiles, id: \.self) { profile in
-                                                        Text(profile).tag(profile)
-                                                    }
-                                                }
-                                            }
-
-                                            Section("Profils standard Apple & Industrie") {
-                                                ForEach(standardProfilesList, id: \.self) { profile in
-                                                    Text(profile).tag(profile)
-                                                }
-                                            }
+                                            profilePicker(for: $settings.creativeColorProfileName)
                                         }
-                                        .labelsHidden()
                                     }
                                 }
+                                .padding(8)
+                            }
+                        } else {
+                            ForEach(displayManager.connectedDisplays) { display in
+                                GlassCard {
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        HStack(spacing: 10) {
+                                            Image(systemName: display.isBuiltin ? "laptopcomputer" : "display")
+                                                .font(.title3)
+                                                .foregroundStyle(display.isManagementEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
 
-                                Divider()
+                                            Text(display.name)
+                                                .font(.system(.body, design: .rounded, weight: .semibold))
 
+                                            if display.isXDR {
+                                                Text("XDR")
+                                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                                    .padding(.horizontal, 5)
+                                                    .padding(.vertical, 2)
+                                                    .background(Color.purple.opacity(0.2))
+                                                    .foregroundColor(.purple)
+                                                    .clipShape(Capsule())
+                                            }
+
+                                            if display.supportsDDC {
+                                                Text("DDC/CI")
+                                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                                    .padding(.horizontal, 5)
+                                                    .padding(.vertical, 2)
+                                                    .background(Color.blue.opacity(0.2))
+                                                    .foregroundColor(.blue)
+                                                    .clipShape(Capsule())
+                                            }
+
+                                            if !display.isManagementEnabled {
+                                                Text("Non géré")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+
+                                            Spacer()
+                                        }
+
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Profil d'étalonnage pour cet écran")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+
+                                            profilePicker(for: Binding(
+                                                get: { settings.calibrationProfile(for: display.id) },
+                                                set: { settings.setCalibrationProfile($0, for: display.id) }
+                                            ))
+                                        }
+
+                                        if let currentProfile = display.activeColorProfileName {
+                                            HStack(spacing: 4) {
+                                                Text("Profil actuel :")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                                Text(currentProfile)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.primary)
+                                            }
+                                        }
+                                    }
+                                    .padding(8)
+                                }
+                            }
+                        }
+
+                        // Shared tools & probe info
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
                                 HStack {
                                     Button {
                                         Task {
@@ -125,25 +182,43 @@ struct CalibrationTab: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
-                        ForEach(displayManager.connectedDisplays.filter { $0.isXDR }) { display in
+                        ForEach(displayManager.connectedDisplays.filter { $0.isXDR }) { xdrDisplay in
                             GlassCard {
                                 HStack {
                                     Image(systemName: "sparkles.tv")
                                         .font(.title2)
-                                        .foregroundStyle(.purple)
+                                        .foregroundStyle(settings.effectiveAccentColor ?? .purple)
 
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(display.name)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(xdrDisplay.name)
                                             .font(.subheadline)
                                             .fontWeight(.semibold)
 
-                                        if let preset = display.activeReferencePreset {
-                                            Text(preset.displayName)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
+                                        if let activePreset = xdrDisplay.activeReferencePreset {
+                                            HStack(spacing: 6) {
+                                                Text(activePreset.displayName)
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+
+                                                if activePreset.hasHardwareLuminanceLock {
+                                                    Label("Matériellement verrouillé", systemImage: "lock.fill")
+                                                        .font(.caption2)
+                                                        .foregroundStyle(.orange)
+                                                }
+                                            }
                                         }
                                     }
+
                                     Spacer()
+
+                                    if let activePreset = xdrDisplay.activeReferencePreset {
+                                        Text("\(Int(activePreset.nominalSDRLuminance)) nits")
+                                            .font(.system(.caption, design: .monospaced, weight: .bold))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(.quaternary)
+                                            .clipShape(Capsule())
+                                    }
                                 }
                                 .padding(6)
                             }
@@ -155,7 +230,29 @@ struct CalibrationTab: View {
         }
         .task {
             await refreshProfiles()
+            displayManager.refreshConnectedDisplays()
         }
+    }
+
+    // MARK: - Helper Views
+
+    private func profilePicker(for selectionBinding: Binding<String>) -> some View {
+        Picker("", selection: selectionBinding) {
+            if !customCalibrationProfiles.isEmpty {
+                Section("Profils personnalisés (Sondes & Outils externes)") {
+                    ForEach(customCalibrationProfiles, id: \.self) { profile in
+                        Text(profile).tag(profile)
+                    }
+                }
+            }
+
+            Section("Profils standard Apple & Industrie") {
+                ForEach(standardProfilesList, id: \.self) { profile in
+                    Text(profile).tag(profile)
+                }
+            }
+        }
+        .labelsHidden()
     }
 
     private var customCalibrationProfiles: [String] {
@@ -164,16 +261,13 @@ struct CalibrationTab: View {
 
     private var standardProfilesList: [String] {
         let list = availableProfiles.filter { standardAppleProfiles.contains($0) }
-        return list.isEmpty ? ["Display P3", "sRGB", "Adobe RGB (1998)", "Rec. 709"] : list
+        return list.isEmpty ? Array(standardAppleProfiles).sorted() : list
     }
 
     private func refreshProfiles() async {
         let profiles = await ColorSyncController.shared.availableStandardProfiles()
         await MainActor.run {
             self.availableProfiles = profiles
-            if !profiles.contains(settings.creativeColorProfileName), let first = profiles.first {
-                settings.creativeColorProfileName = first
-            }
         }
     }
 }

@@ -58,9 +58,12 @@ struct SettingsView: View {
                 .tag(5)
         }
         .frame(width: 560, height: 480)
-        .id("settings-view-\(settings.appLanguage.rawValue)-\(LocalizationService.currentResolvedLanguageCode)")
+        .id("settings-view-\(settings.appLanguage.rawValue)-\(LocalizationService.currentResolvedLanguageCode)-\(settings.appColorScheme.rawValue)")
         // Both are needed: .tint for SwiftUI components, .accentColor for native macOS TabView tabs
         .tint(settings.effectiveAccentColor ?? .accentColor)
         .accentColor(settings.effectiveAccentColor)
+        .onChange(of: settings.appColorScheme) { _, newScheme in
+            settings.applyColorScheme(newScheme)
+        }
     }
 }

@@ -10,99 +10,10 @@ import SwiftUI
 
 struct BrightnessTab: View {
     @Bindable var settings: AppSettings
-    @State private var displayManager = DisplayManager.shared
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // MARK: - Connected Displays Section
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Écrans Détectés")
-                        .font(.headline)
-
-                    Text("Activez ou désactivez la gestion des couleurs et de la calibration pour chaque écran.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    if displayManager.connectedDisplays.isEmpty {
-                        GlassCard {
-                            HStack {
-                                Image(systemName: "display.trianglebadge.exclamationmark")
-                                    .font(.title2)
-                                    .foregroundStyle(.secondary)
-                                Text("Aucun écran détecté.")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(8)
-                        }
-                    } else {
-                        ForEach(displayManager.connectedDisplays) { display in
-                            GlassCard {
-                                HStack(spacing: 12) {
-                                    Image(systemName: display.isBuiltin ? "laptopcomputer" : "display")
-                                        .font(.title2)
-                                        .foregroundStyle(display.isManagementEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
-
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        HStack(spacing: 6) {
-                                            Text(display.name)
-                                                .font(.headline)
-
-                                            if display.isXDR {
-                                                Text("XDR")
-                                                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                                                    .padding(.horizontal, 5)
-                                                    .padding(.vertical, 2)
-                                                    .background(Color.purple.opacity(0.2))
-                                                    .foregroundColor(.purple)
-                                                    .clipShape(Capsule())
-                                            }
-
-                                            if display.supportsDDC {
-                                                Text("DDC/CI")
-                                                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                                                    .padding(.horizontal, 5)
-                                                    .padding(.vertical, 2)
-                                                    .background(Color.blue.opacity(0.2))
-                                                    .foregroundColor(.blue)
-                                                    .clipShape(Capsule())
-                                            }
-                                        }
-
-                                        HStack(spacing: 8) {
-                                            if let preset = display.activeReferencePreset {
-                                                Text(preset.displayName)
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-
-                                            if let profile = display.activeColorProfileName {
-                                                Text("• \(profile)")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                    }
-
-                                    Spacer()
-
-                                    Toggle("", isOn: Binding(
-                                        get: { display.isManagementEnabled },
-                                        set: { enabled in
-                                            displayManager.setManagementEnabled(enabled, for: display.id)
-                                        }
-                                    ))
-                                    .labelsHidden()
-                                }
-                                .padding(6)
-                            }
-                        }
-                    }
-                }
-
-                Divider()
-
                 // MARK: - Creative Brightness Section
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Luminosité en Mode Créatif")

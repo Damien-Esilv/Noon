@@ -165,6 +165,8 @@ struct OptionDisablingLogicTests {
         }
         
         monitorService.stopMonitoring()
+        settings.removeApp(invalidApp)
+        settings.monitoredApps = []
     }
 }
 

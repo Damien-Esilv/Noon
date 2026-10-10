@@ -13,6 +13,7 @@ struct GeneralTab: View {
     let displayService: DisplayService
     let monitorService: AppMonitorService
     
+    @State private var displayManager = DisplayManager.shared
     @State private var loginItemError: String?
     @State private var showAbout = false
     
@@ -21,6 +22,9 @@ struct GeneralTab: View {
             VStack(spacing: 20) {
                 // MARK: - Status Overview
                 statusCard
+                
+                // MARK: - Detected Displays
+                detectedDisplaysSection
                 
                 // MARK: - Launch & Behavior
                 behaviorSection
@@ -38,6 +42,9 @@ struct GeneralTab: View {
                 aboutSection
             }
             .padding(24)
+        }
+        .task {
+            displayManager.refreshConnectedDisplays()
         }
     }
     
@@ -127,6 +134,100 @@ struct GeneralTab: View {
         }
     }
     
+    // MARK: - Detected Displays Section
+    
+    private var detectedDisplaysSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Cochez les écrans que vous souhaitez gérer avec Noon lors de l'exécution d'applications créatives.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                if displayManager.connectedDisplays.isEmpty {
+                    HStack {
+                        Image(systemName: "display.trianglebadge.exclamationmark")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                        Text("Aucun écran détecté.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(8)
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(displayManager.connectedDisplays) { display in
+                            HStack(spacing: 12) {
+                                Image(systemName: display.isBuiltin ? "laptopcomputer" : "display")
+                                    .font(.title2)
+                                    .foregroundStyle(display.isManagementEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
+                                
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack(spacing: 6) {
+                                        Text(display.name)
+                                            .font(.system(.body, design: .rounded, weight: .semibold))
+                                        
+                                        if display.isXDR {
+                                            Text("XDR")
+                                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                                .padding(.horizontal, 5)
+                                                .padding(.vertical, 2)
+                                                .background(Color.purple.opacity(0.2))
+                                                .foregroundColor(.purple)
+                                                .clipShape(Capsule())
+                                        }
+                                        
+                                        if display.supportsDDC {
+                                            Text("DDC/CI")
+                                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                                .padding(.horizontal, 5)
+                                                .padding(.vertical, 2)
+                                                .background(Color.blue.opacity(0.2))
+                                                .foregroundColor(.blue)
+                                                .clipShape(Capsule())
+                                        }
+                                    }
+                                    
+                                    HStack(spacing: 8) {
+                                        if let preset = display.activeReferencePreset {
+                                            Text(preset.displayName)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        
+                                        if let profile = display.activeColorProfileName {
+                                            Text("• \(profile)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Toggle("", isOn: Binding(
+                                    get: { display.isManagementEnabled },
+                                    set: { enabled in
+                                        displayManager.setManagementEnabled(enabled, for: display.id)
+                                    }
+                                ))
+                                .labelsHidden()
+                            }
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.primary.opacity(0.03))
+                            )
+                        }
+                    }
+                }
+            }
+            .padding(4)
+        } label: {
+            Label("Écrans Détectés", systemImage: "display.2")
+                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+        }
+    }
+
     // MARK: - Behavior
     
     private var behaviorSection: some View {
@@ -198,18 +299,7 @@ struct GeneralTab: View {
                                 .foregroundStyle(.tertiary)
                         }
                     }
-                } else {
-                    HStack {
-                        Label("True Tone", systemImage: "sun.max.fill")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("Non supporté sur cet écran")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
                 }
-                
-                Divider()
                 
                 Toggle(isOn: $settings.manageNightShift) {
                     HStack {
@@ -236,33 +326,21 @@ struct GeneralTab: View {
             VStack(alignment: .leading, spacing: 12) {
                 Picker(selection: $settings.reactivationMode) {
                     ForEach(ReactivationMode.allCases) { mode in
-                        Label(mode.displayName, systemImage: mode.systemImage)
-                            .tag(mode)
+                        Text(mode.displayName).tag(mode)
                     }
                 } label: {
-                    Text("Mode de réactivation")
+                    Label("Mode de réactivation", systemImage: "arrow.triangle.2.circlepath")
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
+                .frame(maxWidth: 300, alignment: .leading)
                 
-                // Description of selected mode
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: settings.reactivationMode.systemImage)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 16)
-                    
-                    Text(settings.reactivationMode.descriptionKey)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    Spacer(minLength: 0)
-                }
-                .padding(8)
-                .background(.quaternary.opacity(0.2))
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                Text(settings.reactivationMode.descriptionKey)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             .padding(4)
         } label: {
-            Label("Réactivation", systemImage: "arrow.uturn.backward.circle")
+            Label("Réactivation", systemImage: "clock.arrow.circlepath")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
         }
     }
@@ -271,11 +349,17 @@ struct GeneralTab: View {
     
     private var notificationsSection: some View {
         GroupBox {
-            HStack {
+            VStack(alignment: .leading, spacing: 12) {
                 Toggle(isOn: $settings.showNotifications) {
-                    Label("Notifications macOS", systemImage: "bell.badge")
+                    HStack {
+                        Label("Activer les notifications", systemImage: "bell.badge")
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Text("Prévenir lors des changements d'état")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
-                Spacer()
             }
             .padding(4)
         } label: {
@@ -287,26 +371,92 @@ struct GeneralTab: View {
     // MARK: - About
     
     private var aboutSection: some View {
-        GlassCard(material: .regularMaterial, shadowRadius: 4) {
+        GroupBox {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Noon")
-                        .font(.system(.title3, design: .rounded, weight: .bold))
-                    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1.0"
-                    Text("Version \(version)")
+                        .font(.system(.headline, design: .rounded, weight: .bold))
+                    Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("Display Color Manager for Creative Professionals")
-                        .font(.caption)
+                    Text("Made by Sunazur")
+                        .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
                 
                 Spacer()
                 
-                Image(systemName: settings.menuBarIconStyle.rawValue)
-                    .font(.system(size: 32, weight: .light))
-                    .foregroundStyle(settings.effectiveAccentColor ?? .accentColor)
+                Button("À propos") {
+                    showAbout = true
+                }
+                .buttonStyle(.bordered)
             }
+            .padding(4)
+        } label: {
+            Label("À propos", systemImage: "info.circle")
+                .font(.system(.subheadline, design: .rounded, weight: .semibold))
         }
+        .sheet(isPresented: $showAbout) {
+            aboutSheet
+        }
+    }
+    
+    private var aboutSheet: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "sun.max.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(settings.effectiveAccentColor ?? .orange)
+            
+            Text("Noon")
+                .font(.system(.title2, design: .rounded, weight: .bold))
+            
+            Text("Désactive automatiquement True Tone et Night Shift lorsque vous lancez des applications créatives.")
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            
+            Divider()
+            
+            VStack(spacing: 8) {
+                HStack {
+                    Text("Version")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")
+                }
+                
+                HStack {
+                    Text("Build")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
+                }
+                
+                HStack {
+                    Text("Auteur")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("Sunazur")
+                }
+                
+                HStack {
+                    Text("Licence")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("CC BY-NC-SA 4.0")
+                }
+            }
+            .font(.caption)
+            
+            Divider()
+            
+            Button("Fermer") {
+                showAbout = false
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.regular)
+        }
+        .padding(24)
+        .frame(width: 320)
     }
 }

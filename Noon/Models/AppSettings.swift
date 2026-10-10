@@ -9,62 +9,21 @@
 import SwiftUI
 import Combine
 
-// MARK: - Language Support
-enum AppLanguage: String, CaseIterable, Identifiable, Codable {
-    case system = "system"
-    case en = "en"
-    case fr = "fr"
-    case it = "it"
-    case de = "de"
-    case es = "es"
-    case pt = "pt"
-    case zh = "zh-Hans"
-    case ar = "ar"
-    
-    var id: String { rawValue }
-    
-    var displayName: String {
-        switch self {
-        case .system: return "System"
-        case .en: return "English"
-        case .fr: return "Français"
-        case .it: return "Italiano"
-        case .de: return "Deutsch"
-        case .es: return "Español"
-        case .pt: return "Português"
-        case .zh: return "中文"
-        case .ar: return "العربية"
-        }
-    }
-}
-
-enum AccentColorMode: String, CaseIterable, Identifiable, Codable {
-    case system = "system"
-    case custom = "custom"
-    
-    var id: String { rawValue }
-    var displayName: LocalizedStringKey {
-        switch self {
-        case .system: return "Système"
-        case .custom: return "Personnalisé"
-        }
-    }
-}
-
+// MARK: - Enums
 
 // MARK: - Popup Background Style
 enum PopupMaterialStyle: String, CaseIterable, Identifiable, Codable {
+    case transparent = "transparent"
     case semiTransparent = "semiTransparent"
     case solid = "solid"
-    case transparent = "transparent"
     
     var id: String { rawValue }
     
     var displayName: LocalizedStringKey {
         switch self {
-        case .semiTransparent: return "Semi-transparent"
-        case .solid:           return "Solide"
-        case .transparent:     return "Transparent"
+        case .transparent: return "Transparent"
+        case .semiTransparent: return "Flou"
+        case .solid: return "Solide"
         }
     }
 }
@@ -93,14 +52,28 @@ public struct MonitoredWebsite: Identifiable, Codable, Equatable, Sendable {
     ]
 }
 
-enum AppColorScheme: String, CaseIterable, Identifiable, Codable {
-    case system = "system"
-    case light = "light"
-    case dark = "dark"
+enum AccentColorMode: String, CaseIterable, Identifiable, Codable {
+    case system
+    case custom
     
     var id: String { rawValue }
     
-    var displayName: LocalizedStringKey {
+    var displayName: String {
+        switch self {
+        case .system: return "Système"
+        case .custom: return "Personnalisé"
+        }
+    }
+}
+
+enum AppColorScheme: String, CaseIterable, Identifiable, Codable {
+    case system
+    case light
+    case dark
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
         switch self {
         case .system: return "Système"
         case .light: return "Clair"
@@ -109,28 +82,61 @@ enum AppColorScheme: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum AppLanguage: String, CaseIterable, Identifiable, Codable {
+    case system
+    case french = "fr"
+    case english = "en"
+    case italian = "it"
+    case german = "de"
+    case spanish = "es"
+    case portuguese = "pt"
+    case chinese = "zh-Hans"
+    case arabic = "ar"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .system: return "Langue du système"
+        case .french: return "Français"
+        case .english: return "English"
+        case .italian: return "Italiano"
+        case .german: return "Deutsch"
+        case .spanish: return "Español"
+        case .portuguese: return "Português"
+        case .chinese: return "简体中文"
+        case .arabic: return "العربية"
+        }
+    }
+    
+    var locale: Locale {
+        switch self {
+        case .system:
+            return Locale(identifier: LocalizationService.currentResolvedLanguageCode)
+        default:
+            return Locale(identifier: rawValue)
+        }
+    }
+}
+
+// MARK: - AppSettings
+
 @Observable
 final class AppSettings {
     
-    // MARK: - Singleton
-    
     static let shared = AppSettings()
     
-    // MARK: - Storage Keys
+    // MARK: - Keys
     
     private enum Keys {
         static let monitoredApps              = "noon_monitoredApps"
         static let reactivationMode           = "noon_reactivationMode"
-        static let timerDuration              = "noon_timerDuration"
         static let launchAtLogin              = "noon_launchAtLogin"
         static let showNotifications          = "noon_showNotifications"
         static let manageTrueTone             = "noon_manageTrueTone"
         static let manageNightShift           = "noon_manageNightShift"
         static let soundOnToggle              = "noon_soundOnToggle"
-        static let iconStyleNormal            = "noon_iconStyleNormal"
-        static let colorNormal                = "noon_colorNormal"
-        static let colorCreative              = "noon_colorCreative"
-        static let colorError                 = "noon_colorError"
+        static let timerDuration              = "noon_timerDuration"
         static let showTimerInMenuBar         = "noon_showTimerInMenuBar"
         static let resetTimerOnReturn         = "noon_resetTimerOnReturn"
         static let menuBarIconStyle           = "noon_menuBarIconStyle"
@@ -139,6 +145,9 @@ final class AppSettings {
         static let accentColorMode            = "noon_accentColorMode"
         static let customAccentColor          = "noon_customAccentColor"
         static let appColorScheme             = "noon_appColorScheme"
+        static let colorNormal                = "noon_colorNormal"
+        static let colorCreative              = "noon_colorCreative"
+        static let colorError                 = "noon_colorError"
         
         // Display & Advanced Color Fidelity Keys
         static let lock100NitsCalibration     = "noon_lock100NitsCalibration"
@@ -151,7 +160,8 @@ final class AppSettings {
         static let enablePresetBrightness     = "noon_enablePresetBrightness"
         static let presetBrightnessLevel      = "noon_presetBrightnessLevel"
         static let enableCreativeColorProfile = "noon_enableCreativeColorProfile"
-        static let creativeColorProfileName   = "noon_creativeColorProfileName" 
+        static let creativeColorProfileName   = "noon_creativeColorProfileName"
+        static let displayCalibrationProfiles = "noon_displayCalibrationProfiles"
     }
     
     // MARK: - General Settings
@@ -196,27 +206,25 @@ final class AppSettings {
     }
     
     var selectedLocale: Locale {
-        Locale(identifier: LocalizationService.currentResolvedLanguageCode)
+        appLanguage.locale
     }
-
-    // MARK: - Display Engine & Calibration Settings
-
+    
     var lock100NitsCalibration: Bool {
         didSet { UserDefaults.standard.set(lock100NitsCalibration, forKey: Keys.lock100NitsCalibration) }
     }
-
+    
     var manageAutoBrightness: Bool {
         didSet { UserDefaults.standard.set(manageAutoBrightness, forKey: Keys.manageAutoBrightness) }
     }
-
+    
     var enableAmbientLightMonitoring: Bool {
         didSet { UserDefaults.standard.set(enableAmbientLightMonitoring, forKey: Keys.enableAmbientLightMonitoring) }
     }
-
+    
     var showHUDOnSwitch: Bool {
         didSet { UserDefaults.standard.set(showHUDOnSwitch, forKey: Keys.showHUDOnSwitch) }
     }
-
+    
     var popupMaterialStyle: PopupMaterialStyle {
         didSet { UserDefaults.standard.set(popupMaterialStyle.rawValue, forKey: Keys.popupMaterialStyle) }
     }
@@ -232,13 +240,17 @@ final class AppSettings {
     var presetBrightnessLevel: Double {
         didSet { UserDefaults.standard.set(presetBrightnessLevel, forKey: Keys.presetBrightnessLevel) }
     }
-    
+
     var enableCreativeColorProfile: Bool {
         didSet { UserDefaults.standard.set(enableCreativeColorProfile, forKey: Keys.enableCreativeColorProfile) }
     }
-    
+
     var creativeColorProfileName: String {
         didSet { UserDefaults.standard.set(creativeColorProfileName, forKey: Keys.creativeColorProfileName) }
+    }
+
+    var displayCalibrationProfiles: [String: String] {
+        didSet { save(displayCalibrationProfiles, forKey: Keys.displayCalibrationProfiles) }
     }
 
     var monitorWebApps: Bool {
@@ -291,7 +303,13 @@ final class AppSettings {
     }
     
     var appColorScheme: AppColorScheme {
-        didSet { save(appColorScheme, forKey: Keys.appColorScheme) }
+        didSet {
+            save(appColorScheme, forKey: Keys.appColorScheme)
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.applyColorScheme(self.appColorScheme)
+            }
+        }
     }
     
     // MARK: - Transient State
@@ -304,18 +322,30 @@ final class AppSettings {
         !invalidApps.isEmpty
     }
     
+    // MARK: - Per-Display Calibration Helper
+    
+    func calibrationProfile(for displayID: CGDirectDisplayID) -> String {
+        displayCalibrationProfiles[String(displayID)] ?? creativeColorProfileName
+    }
+
+    func setCalibrationProfile(_ profileName: String, for displayID: CGDirectDisplayID) {
+        displayCalibrationProfiles[String(displayID)] = profileName
+        creativeColorProfileName = profileName
+    }
+
     // MARK: - Initialization
     
     init() {
         let defaults = UserDefaults.standard
         
         // Load monitored apps
+        var loadedApps: [MonitoredApp] = []
         if let data = defaults.data(forKey: Keys.monitoredApps),
            let apps = try? JSONDecoder().decode([MonitoredApp].self, from: data) {
-            self.monitoredApps = apps
-        } else {
-            self.monitoredApps = []
+            loadedApps = apps
         }
+        loadedApps.removeAll { $0.bundleIdentifier == "com.missing.creativeapp" }
+        self.monitoredApps = loadedApps
         
         // Load enums
         if let modeStr = defaults.string(forKey: Keys.reactivationMode),
@@ -338,11 +368,11 @@ final class AppSettings {
         self.manageTrueTone     = defaults.object(forKey: Keys.manageTrueTone) as? Bool ?? true
         self.manageNightShift   = defaults.object(forKey: Keys.manageNightShift) as? Bool ?? true
         self.soundOnToggle      = defaults.object(forKey: Keys.soundOnToggle) as? Bool ?? false
-        self.showTimerInMenuBar = defaults.object(forKey: Keys.showTimerInMenuBar) as? Bool ?? true
-        self.resetTimerOnReturn = defaults.object(forKey: Keys.resetTimerOnReturn) as? Bool ?? true
+        self.showTimerInMenuBar = defaults.object(forKey: Keys.showTimerInMenuBar) as? Bool ?? false
+        self.resetTimerOnReturn = defaults.object(forKey: Keys.resetTimerOnReturn) as? Bool ?? false
         self.isMonitoringEnabled = defaults.object(forKey: Keys.isMonitoringEnabled) as? Bool ?? true
-
-        // Display Engine defaults
+        
+        // Display & Advanced Color Fidelity Defaults
         self.lock100NitsCalibration     = defaults.object(forKey: Keys.lock100NitsCalibration) as? Bool ?? false
         self.manageAutoBrightness       = defaults.object(forKey: Keys.manageAutoBrightness) as? Bool ?? true
         self.enableAmbientLightMonitoring = defaults.object(forKey: Keys.enableAmbientLightMonitoring) as? Bool ?? false
@@ -354,7 +384,7 @@ final class AppSettings {
            let style = PopupMaterialStyle(rawValue: styleStr) {
             self.popupMaterialStyle = style
         } else {
-            self.popupMaterialStyle = .semiTransparent
+            self.popupMaterialStyle = .transparent
         }
         
         // Monitored websites
@@ -369,7 +399,14 @@ final class AppSettings {
         self.enablePresetBrightness = defaults.object(forKey: Keys.enablePresetBrightness) as? Bool ?? false
         self.presetBrightnessLevel = defaults.object(forKey: Keys.presetBrightnessLevel) as? Double ?? 0.60
         self.enableCreativeColorProfile = defaults.object(forKey: Keys.enableCreativeColorProfile) as? Bool ?? false
-        self.creativeColorProfileName = defaults.string(forKey: Keys.creativeColorProfileName) ?? "Display P3" 
+        self.creativeColorProfileName = defaults.string(forKey: Keys.creativeColorProfileName) ?? "Display P3"
+        
+        if let data = defaults.data(forKey: Keys.displayCalibrationProfiles),
+           let dict = try? JSONDecoder().decode([String: String].self, from: data) {
+            self.displayCalibrationProfiles = dict
+        } else {
+            self.displayCalibrationProfiles = [:]
+        }
         
         if let data = defaults.data(forKey: Keys.appLanguage),
            let savedLang = try? JSONDecoder().decode(AppLanguage.self, from: data) {
@@ -404,6 +441,38 @@ final class AppSettings {
         
         // Apply language override to Bundle.main on startup
         LocalizationService.applyLanguage(self.appLanguage)
+        save(self.monitoredApps, forKey: Keys.monitoredApps)
+        
+        // Apply initial color scheme
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.applyColorScheme(self.appColorScheme)
+        }
+    }
+    
+    // MARK: - Appearance Management
+    
+    @MainActor
+    func applyColorScheme(_ scheme: AppColorScheme) {
+        let appearance: NSAppearance?
+        switch scheme {
+        case .system:
+            appearance = nil
+        case .light:
+            appearance = NSAppearance(named: .aqua)
+        case .dark:
+            appearance = NSAppearance(named: .darkAqua)
+        }
+        
+        NSApp.appearance = appearance
+        
+        for window in NSApp.windows {
+            window.appearance = appearance
+            window.contentView?.needsDisplay = true
+            window.contentView?.needsLayout = true
+            window.displayIfNeeded()
+            window.invalidateShadow()
+        }
     }
     
     // MARK: - Persistence Helpers
@@ -448,36 +517,32 @@ final class AppSettings {
         var invalid: [MonitoredApp] = []
         for i in 0..<monitoredApps.count {
             if !monitoredApps[i].isValid {
-                if let newPath = monitoredApps[i].resolvedPath {
-                    monitoredApps[i].path = newPath
-                } else {
-                    invalid.append(monitoredApps[i])
-                }
+                invalid.append(monitoredApps[i])
             }
         }
         return invalid
     }
     
-    // MARK: - Reset
+    // MARK: - Website Management
     
     func addWebsite(name: String, domain: String) {
-        let cleanedDomain = domain.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanDomain = domain.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             .replacingOccurrences(of: "https://", with: "")
             .replacingOccurrences(of: "http://", with: "")
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let newSite = MonitoredWebsite(
+            .split(separator: "/").first.map(String.init) ?? domain
+        
+        let website = MonitoredWebsite(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-            domain: cleanedDomain,
-            isEnabled: true,
+            domain: cleanDomain,
             isPredefined: false
         )
-        monitoredWebsites.append(newSite)
+        monitoredWebsites.append(website)
     }
-
+    
     func removeWebsite(id: UUID) {
         monitoredWebsites.removeAll { $0.id == id }
     }
-
+    
     func toggleWebsite(id: UUID) {
         if let index = monitoredWebsites.firstIndex(where: { $0.id == id }) {
             monitoredWebsites[index].isEnabled.toggle()

@@ -666,4 +666,47 @@ struct V1_1_NewFeaturesTests {
         #expect(calibrationTab != nil)
         #expect(displaysTab != nil)
     }
+
+    @Test("Per-display calibration profiles configuration and persistence")
+    func testPerDisplayCalibrationProfiles() {
+        let settings = AppSettings.shared
+        let laptopDisplayID: CGDirectDisplayID = 1
+        let externalDisplayID: CGDirectDisplayID = 2
+
+        // Default fallback to creativeColorProfileName
+        #expect(settings.calibrationProfile(for: laptopDisplayID) == settings.creativeColorProfileName)
+
+        // Assign distinct profiles per display
+        settings.setCalibrationProfile("Display P3", for: laptopDisplayID)
+        settings.setCalibrationProfile("Adobe RGB (1998)", for: externalDisplayID)
+
+        #expect(settings.calibrationProfile(for: laptopDisplayID) == "Display P3")
+        #expect(settings.calibrationProfile(for: externalDisplayID) == "Adobe RGB (1998)")
+    }
+
+    @Test("App color scheme switching and system integration")
+    @MainActor
+    func testColorSchemeSwitching() {
+        let settings = AppSettings.shared
+        settings.appColorScheme = .dark
+        #expect(settings.appColorScheme == .dark)
+
+        settings.appColorScheme = .light
+        #expect(settings.appColorScheme == .light)
+
+        settings.appColorScheme = .system
+        #expect(settings.appColorScheme == .system)
+    }
+
+    @Test("Clean onboarding empty state without dummy apps")
+    func testCleanOnboardingState() {
+        let settings = AppSettings.shared
+        #expect(!settings.monitoredApps.contains(where: { $0.bundleIdentifier == "com.missing.creativeapp" }))
+        
+        // Empty state is not an error
+        let emptySettings = AppSettings()
+        emptySettings.monitoredApps = []
+        #expect(emptySettings.hasErrors == false)
+        #expect(emptySettings.invalidApps.isEmpty)
+    }
 }
