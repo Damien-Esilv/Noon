@@ -41,6 +41,7 @@ struct GeneralTab: View {
                 // MARK: - About
                 aboutSection
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(24)
         }
         .task {
@@ -226,6 +227,7 @@ struct GeneralTab: View {
             Label("Écrans Détectés", systemImage: "display.2")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
         }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Behavior
@@ -267,20 +269,25 @@ struct GeneralTab: View {
                 
                 Divider()
                 
-                Picker(selection: $settings.appLanguage) {
-                    ForEach(AppLanguage.allCases) { lang in
-                        Text(lang.displayName).tag(lang)
-                    }
-                } label: {
+                HStack {
                     Label("Langue de l'app", systemImage: "globe")
+                    Spacer()
+                    Picker("", selection: $settings.appLanguage) {
+                        ForEach(AppLanguage.allCases) { lang in
+                            Text(lang.displayName).tag(lang)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
                 }
-                .frame(maxWidth: 300, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(4)
         } label: {
             Label("Comportement", systemImage: "switch.2")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
         }
+        .frame(maxWidth: .infinity)
     }
     
     // MARK: - Display Features
@@ -312,37 +319,43 @@ struct GeneralTab: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(4)
         } label: {
             Label("Fonctionnalités d'affichage", systemImage: "display")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
         }
+        .frame(maxWidth: .infinity)
     }
     
     // MARK: - Reactivation Mode
     
     private var reactivationSection: some View {
         GroupBox {
-            VStack(alignment: .leading, spacing: 12) {
-                Picker(selection: $settings.reactivationMode) {
-                    ForEach(ReactivationMode.allCases) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
                     Label("Mode de réactivation", systemImage: "arrow.triangle.2.circlepath")
+                    Spacer()
+                    Picker("", selection: $settings.reactivationMode) {
+                        ForEach(ReactivationMode.allCases) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
                 }
-                .pickerStyle(.menu)
-                .frame(maxWidth: 300, alignment: .leading)
                 
                 Text(settings.reactivationMode.descriptionKey)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(4)
         } label: {
             Label("Réactivation", systemImage: "clock.arrow.circlepath")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
         }
+        .frame(maxWidth: .infinity)
     }
     
     // MARK: - Notifications
@@ -361,11 +374,13 @@ struct GeneralTab: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(4)
         } label: {
             Label("Notifications", systemImage: "bell")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
         }
+        .frame(maxWidth: .infinity)
     }
     
     // MARK: - About
@@ -396,6 +411,7 @@ struct GeneralTab: View {
             Label("À propos", systemImage: "info.circle")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
         }
+        .frame(maxWidth: .infinity)
         .sheet(isPresented: $showAbout) {
             aboutSheet
         }

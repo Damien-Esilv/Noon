@@ -44,6 +44,16 @@ public struct MonitoredWebsite: Identifiable, Codable, Equatable, Sendable {
         self.isPredefined = isPredefined
     }
 
+    public static let suggestions: [MonitoredWebsite] = [
+        MonitoredWebsite(name: "Figma", domain: "figma.com", isEnabled: true, isPredefined: true),
+        MonitoredWebsite(name: "Canva", domain: "canva.com", isEnabled: true, isPredefined: true),
+        MonitoredWebsite(name: "Photopea", domain: "photopea.com", isEnabled: true, isPredefined: true),
+        MonitoredWebsite(name: "Spline", domain: "spline.design", isEnabled: true, isPredefined: true),
+        MonitoredWebsite(name: "Adobe Express", domain: "express.adobe.com", isEnabled: true, isPredefined: true),
+        MonitoredWebsite(name: "Pixlr", domain: "pixlr.com", isEnabled: true, isPredefined: true),
+        MonitoredWebsite(name: "Vectorpea", domain: "vectorpea.com", isEnabled: true, isPredefined: true)
+    ]
+
     public static let standardWebsites: [MonitoredWebsite] = [
         MonitoredWebsite(name: "Figma", domain: "figma.com", isEnabled: true, isPredefined: true),
         MonitoredWebsite(name: "Canva", domain: "canva.com", isEnabled: true, isPredefined: true),
@@ -525,22 +535,31 @@ final class AppSettings {
     
     // MARK: - Website Management
     
-    func addWebsite(name: String, domain: String) {
+    func addWebsite(name: String, domain: String, isPredefined: Bool = false) {
         let cleanDomain = domain.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             .replacingOccurrences(of: "https://", with: "")
             .replacingOccurrences(of: "http://", with: "")
             .split(separator: "/").first.map(String.init) ?? domain
         
+        if monitoredWebsites.contains(where: { $0.domain.localizedCaseInsensitiveCompare(cleanDomain) == .orderedSame }) {
+            return
+        }
+        
         let website = MonitoredWebsite(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             domain: cleanDomain,
-            isPredefined: false
+            isEnabled: true,
+            isPredefined: isPredefined
         )
         monitoredWebsites.append(website)
     }
     
     func removeWebsite(id: UUID) {
         monitoredWebsites.removeAll { $0.id == id }
+    }
+    
+    func removeWebsite(_ website: MonitoredWebsite) {
+        removeWebsite(id: website.id)
     }
     
     func toggleWebsite(id: UUID) {

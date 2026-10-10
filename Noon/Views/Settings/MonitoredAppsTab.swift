@@ -29,11 +29,13 @@ struct MonitoredAppsTab: View {
     @State private var selectedCategory: MonitoredCategory = .apps
     @State private var showFilePicker = false
     @State private var showSuggestions = false
+    @State private var showWebsiteSuggestions = false
     @State private var showAddWebsiteSheet = false
     
     @State private var searchText = ""
     @State private var websiteSearchText = ""
     @State private var selectedApp: MonitoredApp?
+    @State private var selectedWebsite: MonitoredWebsite?
     
     @State private var newWebsiteName = ""
     @State private var newWebsiteDomain = ""
@@ -48,19 +50,11 @@ struct MonitoredAppsTab: View {
         }
     }
     
-    private var predefinedWebsites: [MonitoredWebsite] {
-        let sites = settings.monitoredWebsites.filter { $0.isPredefined }
-        if websiteSearchText.isEmpty { return sites }
-        return sites.filter {
-            $0.name.localizedCaseInsensitiveContains(websiteSearchText) ||
-            $0.domain.localizedCaseInsensitiveContains(websiteSearchText)
+    private var filteredWebsites: [MonitoredWebsite] {
+        if websiteSearchText.isEmpty {
+            return settings.monitoredWebsites
         }
-    }
-    
-    private var customWebsites: [MonitoredWebsite] {
-        let sites = settings.monitoredWebsites.filter { !$0.isPredefined }
-        if websiteSearchText.isEmpty { return sites }
-        return sites.filter {
+        return settings.monitoredWebsites.filter {
             $0.name.localizedCaseInsensitiveContains(websiteSearchText) ||
             $0.domain.localizedCaseInsensitiveContains(websiteSearchText)
         }
@@ -81,6 +75,9 @@ struct MonitoredAppsTab: View {
         }
         .sheet(isPresented: $showSuggestions) {
             suggestionsSheet
+        }
+        .sheet(isPresented: $showWebsiteSuggestions) {
+            websiteSuggestionsSheet
         }
         .sheet(isPresented: $showAddWebsiteSheet) {
             addWebsiteSheet
@@ -137,57 +134,45 @@ struct MonitoredAppsTab: View {
             
             Divider()
             
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    // Predefined Section
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Sites Web Prédéfinis")
-                            .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(.secondary)
-                        
-                        ForEach(predefinedWebsites) { site in
-                            websiteRow(site: site, isCustom: false)
-                        }
-                    }
-                    
-                    Divider()
-                    
-                    // Custom Section
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Sites Web Personnalisés")
-                                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                        }
-                        
-                        if customWebsites.isEmpty {
-                            HStack {
-                                Spacer()
-                                Text("Aucun site personnalisé ajouté.")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                    .padding(.vertical, 12)
-                                Spacer()
-                            }
-                        } else {
-                            ForEach(customWebsites) { site in
-                                websiteRow(site: site, isCustom: true)
-                            }
-                        }
-                    }
-                }
-                .padding(16)
+            if settings.monitoredWebsites.isEmpty {
+                emptyWebsitesStateView
+            } else {
+                websitesListView
             }
         }
     }
     
-    private func websiteRow(site: MonitoredWebsite, isCustom: Bool) -> some View {
+    private var websitesListView: some View {
+        ScrollView {
+            LazyVStack(spacing: 4) {
+                ForEach(filteredWebsites) { site in
+                    websiteRow(site: site)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(selectedWebsite?.id == site.id ? Color.accentColor.opacity(0.1) : .clear)
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedWebsite = site
+                        }
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        }
+    }
+    
+    private func websiteRow(site: MonitoredWebsite) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: isCustom ? "globe.badge.chevron.backward" : "globe")
-                .font(.system(size: 18))
-                .foregroundStyle(site.isEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
-                .frame(width: 28, height: 28)
+            ZStack {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill((settings.effectiveAccentColor ?? .accentColor).opacity(site.isEnabled ? 0.15 : 0.05))
+                    .frame(width: 28, height: 28)
+                
+                Image(systemName: "globe")
+                    .font(.system(size: 14))
+                    .foregroundStyle(site.isEnabled ? (settings.effectiveAccentColor ?? .accentColor) : .secondary)
+            }
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(site.name)
@@ -210,20 +195,21 @@ struct MonitoredAppsTab: View {
             ))
             .labelsHidden()
             
-            if isCustom {
-                Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        settings.removeWebsite(id: site.id)
+            Button {
+                withAnimation(.spring(response: 0.3)) {
+                    settings.removeWebsite(id: site.id)
+                    if selectedWebsite?.id == site.id {
+                        selectedWebsite = nil
                     }
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.red.opacity(0.8))
                 }
-                .buttonStyle(.plain)
-                .help("Supprimer")
-                .padding(.leading, 6)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.red.opacity(0.8))
             }
+            .buttonStyle(.plain)
+            .help("Supprimer")
+            .padding(.leading, 6)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -235,6 +221,7 @@ struct MonitoredAppsTab: View {
     
     private var websitesToolbarSection: some View {
         HStack(spacing: 8) {
+            // Search
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.tertiary)
@@ -261,18 +248,171 @@ struct MonitoredAppsTab: View {
             
             Spacer()
             
+            // Add from predefined suggestions
+            Button {
+                showWebsiteSuggestions = true
+            } label: {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13))
+                    .frame(width: 14)
+            }
+            .buttonStyle(.bordered)
+            .help("Suggestions de sites web")
+            
+            // Add custom website
             Button {
                 newWebsiteName = ""
                 newWebsiteDomain = ""
                 showAddWebsiteSheet = true
             } label: {
-                Label("Ajouter un site web", systemImage: "plus")
-                    .font(.system(.caption, design: .rounded, weight: .medium))
+                Image(systemName: "plus")
+                    .font(.system(size: 13))
+                    .frame(width: 14)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
+            .buttonStyle(.bordered)
+            .help("Ajouter un site personnalisé")
+            
+            // Remove selected
+            Button {
+                if let site = selectedWebsite {
+                    withAnimation(.spring(response: 0.3)) {
+                        settings.removeWebsite(id: site.id)
+                        selectedWebsite = nil
+                    }
+                }
+            } label: {
+                Image(systemName: "minus")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 14, height: 14)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+            .disabled(selectedWebsite == nil)
+            .help("Supprimer le site sélectionné")
         }
         .padding(12)
+    }
+    
+    // MARK: - Empty Websites State
+    
+    private var emptyWebsitesStateView: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            
+            Image(systemName: "globe.badge.chevron.backward")
+                .font(.system(size: 48, weight: .ultraLight))
+                .foregroundStyle(.tertiary)
+            
+            Text("Aucun site web surveillé")
+                .font(.system(.headline, design: .rounded))
+                .foregroundStyle(.secondary)
+            
+            Text("Ajoutez des outils web créatifs pour que Noon active automatiquement le mode créatif dans Safari, Chrome, Arc et Edge.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            
+            HStack(spacing: 12) {
+                Button {
+                    showWebsiteSuggestions = true
+                } label: {
+                    Label("Suggestions", systemImage: "sparkles")
+                }
+                .buttonStyle(.borderedProminent)
+                
+                Button {
+                    newWebsiteName = ""
+                    newWebsiteDomain = ""
+                    showAddWebsiteSheet = true
+                } label: {
+                    Label("Ajouter un site...", systemImage: "plus")
+                }
+                .buttonStyle(.bordered)
+            }
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    // MARK: - Website Suggestions Sheet
+    
+    private var websiteSuggestionsSheet: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sites web suggérés")
+                        .font(.system(.headline, design: .rounded, weight: .bold))
+                    Text("Outils de création web populaires compatibles avec la détection automatique")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Button("Fermer") {
+                    showWebsiteSuggestions = false
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(16)
+            
+            Divider()
+            
+            // Suggestions list
+            ScrollView {
+                LazyVStack(spacing: 4) {
+                    ForEach(MonitoredWebsite.suggestions) { suggestion in
+                        let alreadyAdded = settings.monitoredWebsites.contains {
+                            $0.domain.localizedCaseInsensitiveCompare(suggestion.domain) == .orderedSame
+                        }
+                        
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill((settings.effectiveAccentColor ?? .accentColor).opacity(0.15))
+                                    .frame(width: 28, height: 28)
+                                
+                                Image(systemName: "globe")
+                                    .foregroundStyle(settings.effectiveAccentColor ?? .accentColor)
+                                    .font(.system(size: 14))
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(suggestion.name)
+                                    .font(.system(.body, design: .rounded, weight: .medium))
+                                
+                                Text(suggestion.domain)
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            
+                            Spacer()
+                            
+                            if alreadyAdded {
+                                Label("Ajoutée", systemImage: "checkmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.green)
+                            } else {
+                                Button("Ajouter") {
+                                    withAnimation(.spring(response: 0.3)) {
+                                        settings.addWebsite(name: suggestion.name, domain: suggestion.domain, isPredefined: true)
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+        }
+        .frame(width: 440, height: 420)
     }
     
     // MARK: - Add Website Sheet

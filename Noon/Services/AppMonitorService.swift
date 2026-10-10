@@ -205,8 +205,9 @@ final class AppMonitorService {
             return
         }
         
-        // 2. In-browser web creative applications (Figma, Canva, Photopea, Spline)
-        if settings.monitorWebApps,
+        // 2. In-browser web creative applications (Figma, Canva, Photopea, Spline, etc.)
+        let hasActiveWebsites = settings.monitoredWebsites.contains(where: { $0.isEnabled })
+        if hasActiveWebsites,
            WebAppWatcher.recognizedBrowserIdentifiers.contains(bundleID),
            let frontApp = NSWorkspace.shared.frontmostApplication {
             let inspection = WebAppWatcher.shared.inspectFrontmostBrowser(

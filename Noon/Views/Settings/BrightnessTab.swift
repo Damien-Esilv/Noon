@@ -69,20 +69,10 @@ struct BrightnessTab: View {
 
                 Divider()
 
-                // MARK: - Environment & Web Tools
+                // MARK: - Environment & Display
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Environnement & Outils Web")
+                    Text("Environnement & Affichage")
                         .font(.headline)
-
-                    Toggle(isOn: $settings.monitorWebApps) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Surveiller les outils créatifs Web (Figma, Canva, Photopea)")
-                                .font(.body)
-                            Text("Active automatiquement le mode créatif lors de l'utilisation d'onglets de design dans Safari, Chrome, Arc ou Edge.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
 
                     Toggle(isOn: $settings.enableAmbientLightMonitoring) {
                         VStack(alignment: .leading, spacing: 2) {
