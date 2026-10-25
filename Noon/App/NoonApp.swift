@@ -173,6 +173,21 @@ struct NoonApp: App {
         guard let command = NoonCommandRouter.shared.parseURL(url) else { return }
 
         Task { @MainActor in
+            // Prompt user for confirmation to prevent CSRF-style attacks via URL scheme
+            let alert = NSAlert()
+            alert.messageText = "Allow External Command?"
+            alert.informativeText = "An external application is attempting to change your display settings via the URL:\n\(url.absoluteString)\n\nDo you want to allow this action?"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Allow")
+            alert.addButton(withTitle: "Cancel")
+
+            NSApp.activate(ignoringOtherApps: true)
+            let response = alert.runModal()
+
+            guard response == .alertFirstButtonReturn else {
+                return
+            }
+
             switch command {
             case .toggleCreativeMode:
                 if DisplayManager.shared.isCreativeModeActive {
