@@ -136,6 +136,51 @@ struct OptionDisablingLogicTests {
         #expect(monitorService.currentState == .normal)
     }
     
+    @Test("validateAndRepairApps identifies invalid apps, repairs broken paths if bundle is resolvable")
+    @MainActor
+    func testValidateAndRepairApps() async throws {
+        let settings = AppSettings()
+        settings.monitoredApps = []
+
+        // 1. Valid app (Finder usually exists)
+        let validApp = MonitoredApp(
+            name: "Finder",
+            bundleIdentifier: "com.apple.finder",
+            path: "/System/Library/CoreServices/Finder.app"
+        )
+
+        // 2. App with fake path but valid bundle ID (should be repaired to /System/Library/CoreServices/Finder.app)
+        let resolvableApp = MonitoredApp(
+            name: "Finder Broken Path",
+            bundleIdentifier: "com.apple.finder",
+            path: "/Fake/Path/Finder.app"
+        )
+
+        // 3. Completely invalid app
+        let invalidApp = MonitoredApp(
+            name: "NonExistent",
+            bundleIdentifier: "com.nonexistent.app",
+            path: "/Fake/Path/NonExistent.app"
+        )
+
+        settings.addApp(validApp)
+        settings.addApp(resolvableApp)
+        settings.addApp(invalidApp)
+
+        let invalidReturned = settings.validateAndRepairApps()
+
+        // Only the completely invalid app should be returned as irrecoverably invalid
+        #expect(invalidReturned.count == 1)
+        #expect(invalidReturned.first?.bundleIdentifier == "com.nonexistent.app")
+
+        // The resolvable app should have its path updated to the real one
+        if let repairedApp = settings.monitoredApps.first(where: { $0.name == "Finder Broken Path" }) {
+            #expect(repairedApp.path == "/System/Library/CoreServices/Finder.app")
+        } else {
+            Issue.record("Could not find repaired app in settings")
+        }
+    }
+
     @Test("Invalid monitored app triggers error state on monitoring validation")
     @MainActor
     func testInvalidAppTriggersErrorState() async throws {
